@@ -13,7 +13,7 @@ extract_code = function(dat){
   tibble(
     Crop = extract_n(dat, 3),
     Year = extract_n(dat, 4),
-    P = extract_n(dat, 2)
+    P = coalesce(extract_n(dat, 2),extract_n(dat, 1))
   )
 }
 

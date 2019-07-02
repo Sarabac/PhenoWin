@@ -2,7 +2,7 @@
 SHP_FILE = file.path("Deu_admin/DEU_adm1.shp")
 GERMANY = file.path("Deu_admin/DEU_adm0.shp")
 WEATHERGRID = file.path("Weathergrid/WEATHER_GRID_EPSG31467.shp")
-RU.DIR = "_input/"
+RU.DIR = "_DOY/"
 PHASE.DIR = "_output/"
 OUT.DIR <- "_output/"
 RU = "VG250_KRS_UCKERMARK_epsg25832"
