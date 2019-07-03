@@ -44,7 +44,6 @@ period_labelling = function(from, to){
 
 
 tif_info = extract_tif_info(RU.DIR)
-ph.ct = raster::stack(tif_info$dir)
 Pdoy = readRDS("DOY.rds")
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
@@ -58,7 +57,9 @@ ui = fluidPage(
           column(2,
                  radioButtons("mapChoice", "Map level",
                         c("Contry" = 0, "Landern" = 1),
-                        selected = 0))
+                        selected = 0)),
+                selectInput("CropSelect", "Select Crop",
+                            choices = CROPS_CORRESPONDANCE, selected = 201)
            ),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
@@ -84,12 +85,14 @@ server = function(input, output){
     if(!is.null(input$map_shape_click)){
       if (input$mapChoice == 0){
         point = creat_point()
+        ph.ct = raster::stack(tif_info %>% filter(Crop == input$CropSelect) %>% pull(dir))
         Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
         dat = cumsum_Pheno(Pd, digit = 1)
         proxy = leafletProxy("map")
         proxy %>% clearMarkers() %>%
           addMarkers(data = creat_point())
       }else{
+      Pdoy =  
       area_id = as.integer(input$map_shape_click[["id"]])
       print(area_id)
       if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
