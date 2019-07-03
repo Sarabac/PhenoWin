@@ -1,5 +1,5 @@
 # PhenoWin
-Shiny application to draw phenological graph
+Shiny application to draw phenological graph <br>
 launche graph_pheno.R to launch the shiny app
 
 ## Setup
