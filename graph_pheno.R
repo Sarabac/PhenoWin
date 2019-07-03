@@ -11,12 +11,12 @@ library(lubridate)
 source("variables_pheno.R")
 source("functions_Pheno.R")
 
-color_scale = scale_fill_manual(values = setNames(col.p, as.character(CT.P)))
-
-
-
-
 build_DOY_graph = function(dat){
+  # create the Phenological graph from the data frame "dat"
+  # with 3 columns:
+  # "Date": class Date
+  # "sum_weight": between 0 and 1
+  # "P": phenological stage
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
     geom_tile() + 
     geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-"))),
@@ -24,11 +24,15 @@ build_DOY_graph = function(dat){
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-"))),
                linetype = "dotted")  +
     labs(fill = "Phenology", alpha = "Probability") +
-    color_fill_custom
+    color_fill_custom   +
+    theme(axis.text.x=element_text(angle=30, hjust=0.5),
+          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
   return(graph)
 }
 
 period_labelling = function(from, to){
+  # define the date break of the graph
+  # depending of the lenght of the time period
   dif = ymd(to) - ymd(from)
   label_period = case_when(
     dif > 2100 ~ "1 month",
@@ -46,13 +50,12 @@ period_labelling = function(from, to){
 tif_info = extract_tif_info(RU.DIR)
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
-#germany = raster::shapefile(WEATHERGRID)
-raster::plot(germany)
-
+# the minimal value of the time scale
 minDate = as.Date(paste(min(tif_info$Year), "01","01", sep = "-"))
+# the maximale value of the time scale
 maxDate = as.Date(paste(max(tif_info$Year) + 1, "01","01", sep = "-"))
 
-
+# widgets of the shiny app
 ui = fluidPage(
   fluidRow(column(10,
                   leafletOutput("map")),
@@ -76,6 +79,7 @@ ui = fluidPage(
 server = function(input, output){
   
   creat_point = reactive({
+    # creat a spatialpoint after a click on the map
     click = input$map_shape_click
     lng = click[["lng"]]
     lat = click[["lat"]]
@@ -84,6 +88,8 @@ server = function(input, output){
   })
   
   filter_Area = reactive({
+    # create the data frame for te map
+    # depending of the choices of the user
     if(!is.null(input$map_shape_click)){
       SCrop = input$CropSelect
       if (input$mapChoice == 0){
@@ -96,14 +102,16 @@ server = function(input, output){
           pull(dir)
         ph.ct = raster::stack(selected_tif )
         point = creat_point()
-        ppp <<- point
         Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
         dat = cumsum_Pheno(Pd, digit = 1)
-        proxy = leafletProxy("map")
+        # create a marker were the data is extraxted
+        proxy = leafletProxy("map") 
         proxy %>% clearMarkers() %>%
           addMarkers(data = creat_point())
       }else{
+      # extract the pre-processed data for the selected crop
       Pdoy = readRDS(DATA_FILE(SCrop))
+      # the ID of the selected polygon
       area_id = as.integer(input$map_shape_click[["id"]])
       if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
       dat = Pdoy %>% filter(Area == area_id )
@@ -120,22 +128,22 @@ server = function(input, output){
     
     dat = filter_Area()
     if(!is.null(dat)){
-    from = input$DatesMerge[1]
-    to = input$DatesMerge[2]
-    label_period = period_labelling(from,to)
-    lab_title = s@data %>% filter(ID_1 %in% dat$Area) %>% pull(NAME_1) %>% unique()
-
-     dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>% build_DOY_graph() +
-      scale_x_date(date_breaks = label_period,  labels = scales::date_format("%j"),
-                   sec.axis = dup_axis(name = lab_title,
-                                       labels = scales::date_format("%d %b %Y")))  +
-      theme(axis.text.x=element_text(angle=30, hjust=0.5),
-            axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
+      from = input$DatesMerge[1]
+      to = input$DatesMerge[2]
+      label_period = period_labelling(from,to)
+      # name of the selected area
+      lab_title = s@data %>% filter(ID_1 %in% dat$Area) %>% pull(NAME_1) %>% unique()
+  
+       dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>%
+         build_DOY_graph() +
+        scale_x_date(date_breaks = label_period,  labels = scales::date_format("%j"),
+                     sec.axis = dup_axis(name = lab_title,
+                                         labels = scales::date_format("%d %b %Y")))
     }
     })
   
   output$map = renderLeaflet({
-    
+    # Define the map
     if(input$mapChoice == 0){
       map = leaflet(germany) %>%
         addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
@@ -157,33 +165,5 @@ server = function(input, output){
   })
 }
 
+#Launch the Shiny app
 shinyApp(ui = ui, server = server)
-
-#s@data$NAME_1[input$map_shape_click[["id"]]]
-
-
-
-test = Pdoy %>% filter(Area == 1 & Crop == 202) 
-build_DOY_graph(test) + 
-  coord_cartesian(xlim = c(as.Date("2016-01-01"), as.Date("2018-03-31")))
-
-lng = 10.19892
-lat = 49.38237
-point = sp::SpatialPoints(cbind(c(lng), c(lat)),
-                                   proj4string = sp::CRS("+proj=longlat +datum=WGS84"))
-raster::plot(germany)
-raster::plot(point, add = TRUE)
-Pd = extract_DOY(ph.ct, point)
-sum_weight = cumsum_Pheno(Pd, digit = 1)
-build_DOY_graph(sum_weight)
-
-
-cell = raster::cellFromPolygon(ph.ct, point)
-
-p = sp::spTransform(point, raster::crs(ph.ct))
-Val = raster::extract(ph.ct, p)
-
-z = raster::click(ph.ct, n=1)
-
-k = raster::rasterToPoints(ph.ct)
-raster::plot(k)
