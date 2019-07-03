@@ -11,15 +11,19 @@ DATA_FOLDER = "_DATA"
 DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 
 
-CT.P <- c(10,12,15,18,19,21,24)
-col.p <- c("#3288BD", #10
+CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
+col.p <- c("#FFFE89", #5
+           "#3288BD", #10
            "#e5f4e3", #12
+           "#c4e7bf", #14
            "#ABDDA4", #15
+           "#93d4c0", #17
            "#66C2A5", #18
            "#feecb9", #19
            "#FDAE61", #21
+           "#FDAE61", #22
            "#F46D43", #24
-           "#D53E4F") #AH
+           "#99c693") #67
 color_fill_rule = setNames(col.p, CT.P)
 color_fill_custom = scale_fill_manual(values = color_fill_rule)
 

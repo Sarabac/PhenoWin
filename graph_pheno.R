@@ -44,11 +44,13 @@ period_labelling = function(from, to){
 
 
 tif_info = extract_tif_info(RU.DIR)
-Pdoy = readRDS("DOY.rds")
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 #germany = raster::shapefile(WEATHERGRID)
 raster::plot(germany)
+
+minDate = as.Date(paste(min(tif_info$Year), "01","01", sep = "-"))
+maxDate = as.Date(paste(max(tif_info$Year) + 1, "01","01", sep = "-"))
 
 
 ui = fluidPage(
@@ -57,14 +59,14 @@ ui = fluidPage(
           column(2,
                  radioButtons("mapChoice", "Map level",
                         c("Contry" = 0, "Landern" = 1),
-                        selected = 0)),
+                        selected = 0),
                 selectInput("CropSelect", "Select Crop",
                             choices = CROPS_CORRESPONDANCE, selected = 201)
-           ),
+           )),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
-                         min = as.Date(min(Pdoy$Date),"%Y-%m-%d"),
-                         max = as.Date(max(Pdoy$Date),"%Y-%m-%d"),
+                         min = minDate,
+                         max = maxDate,
                          value=c(as.Date("2015-01-01"),as.Date("2018-01-01") ),
                          timeFormat="%Y-%m-%d", width = "100%")),
   fluidRow(plotOutput("DOY_GRAPH"))
@@ -83,23 +85,31 @@ server = function(input, output){
   
   filter_Area = reactive({
     if(!is.null(input$map_shape_click)){
+      SCrop = input$CropSelect
       if (input$mapChoice == 0){
+        from = input$DatesMerge[1]
+        to = input$DatesMerge[2]
+        minYear = year(ymd(from)) -1
+        maxYear = year(ymd(to)) +1
+        selected_tif = tif_info %>% 
+          filter(Crop == SCrop & Year >= minYear & Year <= maxYear) %>% 
+          pull(dir)
+        ph.ct = raster::stack(selected_tif )
         point = creat_point()
-        ph.ct = raster::stack(tif_info %>% filter(Crop == input$CropSelect) %>% pull(dir))
+        ppp <<- point
         Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
         dat = cumsum_Pheno(Pd, digit = 1)
         proxy = leafletProxy("map")
         proxy %>% clearMarkers() %>%
           addMarkers(data = creat_point())
       }else{
-      Pdoy =  
+      Pdoy = readRDS(DATA_FILE(SCrop))
       area_id = as.integer(input$map_shape_click[["id"]])
-      print(area_id)
       if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
       dat = Pdoy %>% filter(Area == area_id )
       }
       
-      return(dat %>% filter(Crop == 202))
+      return(dat)
     }else{
       return(NULL)
     }
