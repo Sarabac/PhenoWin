@@ -34,5 +34,5 @@ for(crop in unique(tif_info$Crop)){
   
   # save
   sum_weight %>% select(Area, Crop, P, P_order, Date, sum_weight) %>%
-    saveRDS(paste("_Data/DOY_",crop,".rds"))
+    saveRDS(DATA_FILE(crop))
 }
