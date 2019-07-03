@@ -1,11 +1,11 @@
-
-
+# functions used to extract the data and build the graphs
 library(tidyverse)
 library(lubridate)
 
 source("variables_pheno.R")
 
 extract_n = function(dat, n){
+  # extract a number of length n from a character vector
   as.integer(str_extract(dat, paste("(?:(?<!\\d)\\d{",n,"}(?!\\d))", sep="")))
 }
 
@@ -13,11 +13,14 @@ extract_code = function(dat){
   tibble(
     Crop = extract_n(dat, 3),
     Year = extract_n(dat, 4),
+    # Phenology have a lenght 1 or 2
     P = coalesce(extract_n(dat, 2),extract_n(dat, 1))
   )
 }
 
 extract_tif_info = function(directory){
+  # extract the path of each geotif in a directory with
+  # the Crop number, the year and the phenological stage
   tibble(dir = list.files(directory, full.names = T)) %>% 
     filter(str_detect(.$dir, ".tif$")) %>% # take all the .tif files
     bind_cols(extract_code(.$dir))
@@ -60,7 +63,7 @@ extract_DOY = function(x,y, ID_var_poly =""){
 
 ####
 cumsum_Pheno = function(weighted_pixels, digit = 2){
-  
+  # digit : precision of the weight of the phenological stage
   Pheno_order = weighted_pixels %>%
     group_by(Area, Crop, Year, P) %>%
     summarise(start = as.Date(min(Date)),
@@ -79,7 +82,6 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
                  select(Area, Crop, P, P_order),
                by = c("Area", "Crop", "P_order"))
   
-  
   sum_weight = left_join(total_period, weighted_pixels, by = c("Area", "Crop", "Date", "P")) %>% # if 2 phen have the same DOY ?
     fill(P) %>% mutate(weight = replace_na(weight, 0)) %>%
     mutate(Year = year(Date)) %>%
@@ -90,5 +92,3 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
   
   return(sum_weight)
 }
-# save
-#sum_weight %>% select(Area, Crop, P, P_order, Date, sum_weight) %>% saveRDS("DOY.rds")
