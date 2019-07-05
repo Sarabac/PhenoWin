@@ -11,6 +11,7 @@ library(lubridate)
 source("variables_pheno.R")
 source("functions_Pheno.R")
 
+print("OK")
 build_DOY_graph = function(dat){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:
@@ -18,14 +19,15 @@ build_DOY_graph = function(dat){
   # "sum_weight": between 0 and 1
   # "P": phenological stage
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
-    geom_tile() + 
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-"))),
-               linetype = "dashed", size = 2)+ 
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-"))),
-               linetype = "dotted")  +
+    geom_tile() +
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
+               linetype = "Year"), size = 2)+
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
+               linetype = "Month"))  +
     labs(fill = "Phenology", alpha = "Probability") +
-    color_fill_custom   +
-    theme(axis.text.x=element_text(angle=30, hjust=0.5),
+    color_fill_custom +
+    scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
+    theme(axis.text.x=element_text(angle=30, hjust=1),
           axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
   return(graph)
 }
@@ -50,6 +52,7 @@ period_labelling = function(from, to){
 tif_info = extract_tif_info(RU.DIR)
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
+s = sp::spTransform(s, raster::crs(germany))
 # the minimal value of the time scale
 minDate = as.Date(paste(min(tif_info$Year), "01","01", sep = "-"))
 # the maximale value of the time scale
@@ -77,7 +80,7 @@ ui = fluidPage(
 
 
 server = function(input, output){
-  
+
   creat_point = reactive({
     # creat a spatialpoint after a click on the map
     click = input$map_shape_click
@@ -86,28 +89,29 @@ server = function(input, output){
     point = sp::SpatialPoints(cbind(c(lng), c(lat)), sp::CRS("+proj=longlat +datum=WGS84"))
     return(point)
   })
-  
+
   filter_Area = reactive({
     # create the data frame for te map
     # depending of the choices of the user
     if(!is.null(input$map_shape_click)){
       SCrop = input$CropSelect
+      proxy = leafletProxy("map")
+      proxy %>% clearMarkers() %>%
+        addMarkers(data = creat_point())
       if (input$mapChoice == 0){
         from = input$DatesMerge[1]
         to = input$DatesMerge[2]
         minYear = year(ymd(from)) -1
         maxYear = year(ymd(to)) +1
-        selected_tif = tif_info %>% 
-          filter(Crop == SCrop & Year >= minYear & Year <= maxYear) %>% 
+        selected_tif = tif_info %>%
+          filter(Crop == SCrop & Year >= minYear & Year <= maxYear) %>%
           pull(dir)
         ph.ct = raster::stack(selected_tif )
         point = creat_point()
         Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
         dat = cumsum_Pheno(Pd, digit = 1)
         # create a marker were the data is extraxted
-        proxy = leafletProxy("map") 
-        proxy %>% clearMarkers() %>%
-          addMarkers(data = creat_point())
+
       }else{
       # extract the pre-processed data for the selected crop
       Pdoy = readRDS(DATA_FILE(SCrop))
@@ -116,32 +120,30 @@ server = function(input, output){
       if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
       dat = Pdoy %>% filter(Area == area_id )
       }
-      
+
       return(dat)
     }else{
       return(NULL)
     }
-      
+
   })
 
   output$DOY_GRAPH = renderPlot({
-    
+
     dat = filter_Area()
     if(!is.null(dat)){
       from = input$DatesMerge[1]
       to = input$DatesMerge[2]
       label_period = period_labelling(from,to)
       # name of the selected area
-      lab_title = s@data %>% filter(ID_1 %in% dat$Area) %>% pull(NAME_1) %>% unique()
-  
+
        dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>%
          build_DOY_graph() +
-        scale_x_date(date_breaks = label_period,  labels = scales::date_format("%j"),
-                     sec.axis = dup_axis(name = lab_title,
-                                         labels = scales::date_format("%d %b %Y")))
+        scale_x_date(name = "DOY", date_breaks = label_period,  labels = scales::date_format("%j"),
+                     sec.axis = dup_axis(labels = scales::date_format("%d %b %Y")))
     }
     })
-  
+
   output$map = renderLeaflet({
     # Define the map
     if(input$mapChoice == 0){
@@ -161,7 +163,7 @@ server = function(input, output){
                                                       bringToFront = TRUE))
     }
     return(map %>% addTiles())
-    
+
   })
 }
 

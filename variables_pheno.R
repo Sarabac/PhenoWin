@@ -1,7 +1,6 @@
 # variables
-SHP_FILE = file.path("Deu_admin/DEU_adm1.shp") # Landern
+SHP_FILE = file.path("Deu_admin/gem2005_BKR.shp") # Landern
 GERMANY = file.path("Deu_admin/DEU_adm0.shp") #border of germany
-WEATHERGRID = file.path("Weathergrid/WEATHER_GRID_EPSG31467.shp")
 
 RU.DIR = "_DOY/" # DOY geotif file
 DATA_FOLDER = "_Data" # where the result of Extract_Pheno_Shapefile is stored
