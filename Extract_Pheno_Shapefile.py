@@ -8,10 +8,6 @@ import pandas as pd
 import os
 import re
 import sqlite3
-from threading import Thread, Lock, Semaphore
-from datetime import datetime
-
-datetime.strptime("2018-200", "%Y-%j")
 
 
 def getFeatures(gdf, n):
@@ -37,58 +33,6 @@ def extract_tif_info(directory):
     }))
 
 
-class Extractor(Thread):
-    nb_thread = 0
-    finished_thread = 0
-    db_access = Lock()
-    raster_access = Semaphore()
-
-    def __init__(self, tif_info, polygons, IDs, conn):
-        Thread.__init__(self)
-        self.infos = tif_info
-        self.polygons = polygons
-        self.IDs = IDs
-        self.conn = conn
-        Extractor.nb_thread += 1
-
-    def run(self):
-
-        # try to open the geotif file
-        flag = True
-        while flag:
-            try:
-                geotif = rasterio.open(self.infos["dir"])
-            except rasterio.RasterioIOError:
-                # wait for another thread finishing it process
-                Extractor.raster_access.acquire(True)
-            else:
-                # if no problem, aquiere the lock without blocking
-                Extractor.raster_access.acquire(False)
-                flag = False
-
-        for i in range(len(self.IDs)):
-            out_image, tran = mask(geotif, self.polygons[i], filled=False)
-            day = out_image.compressed().round().astype(int)
-            day_weight = pd.DataFrame({"DOY": day, "weight": 1/len(day)})
-            day_weight = day_weight.groupby("DOY").sum().reset_index()
-            day_weight["Area"] = self.IDs[i]
-            day_weight["Crop"] = int(self.infos["Crop"])
-            day_weight["P"] = int(self.infos["P"])
-            day_weight["Year"] = int(self.infos["Year"])
-            if i == 0:
-                weighted_pixels = day_weight
-            else:
-                weighted_pixels = weighted_pixels.append(day_weight)
-        geotif.close()  # close the raster
-        Extractor.raster_access.release()
-        with Extractor.db_access:
-            weighted_pixels.to_sql("PIXEL", self.conn, index=False,
-                                   if_exists="append")
-            Extractor.finished_thread += 1
-            msg = "processing: {}/{}"
-            print(msg.format(Extractor.finished_thread, Extractor.nb_thread))
-
-
 TIF_DIR = "_DOY"
 SHP_ID = "ID_1"
 DB_DIR = "DOY.db"
@@ -107,13 +51,38 @@ except FileNotFoundError:
     pass
 
 conn = sqlite3.connect(DB_DIR)
-extras = [Extractor(tif_info.iloc[i], geojsons, list(lander[SHP_ID]), conn)
-          for i in range(len(tif_info))]
-for extra in extras:
-    extra.run()
+
+IDs = list(lander[SHP_ID])
+for inf in range(len(tif_info)):
+    geotif = rasterio.open(tif_info.iloc[inf]["dir"])
+    for i in range(len(IDs)):
+        out_image, tran = mask(geotif, geojsons[i], filled=False)
+        day = out_image.compressed().round().astype(int)
+        day_weight = pd.DataFrame({"DOY": day, "weight": 1/len(day)})
+        day_weight = day_weight.groupby("DOY").sum().reset_index()
+        day_weight["Area"] = IDs[i]
+        day_weight["Crop"] = int(tif_info.iloc[inf]["Crop"])
+        day_weight["P"] = int(tif_info.iloc[inf]["P"])
+        day_weight["Year"] = int(tif_info.iloc[inf]["Year"])
+        if i == 0:
+            weighted_pixels = day_weight
+        else:
+            weighted_pixels = weighted_pixels.append(day_weight)
+    geotif.close()  # close the raster
+    weighted_pixels.to_sql("PIXEL", conn, index=False, if_exists="append")
+    print("processing: {}/{}".format(inf, len(tif_info)))
 
 cursor = conn.cursor()
 with open("views.sql") as queryfile:
     cursor.executescript(queryfile.read())
 conn.commit()
 conn.close()
+
+cursor.execute("""
+select (select count() from START_END b where julianday(b.Start) <= julianday(s.start)
+group by s.Area,s.Crop) from START_END s
+""")
+cursor.fetchall()
+cursor.execute("""
+Drop view Period_length
+""")
