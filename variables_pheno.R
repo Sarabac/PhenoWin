@@ -1,5 +1,5 @@
 # variables
-SHP_FILE = file.path("Deu_admin/gem2005_BKR.shp") # Landern
+SHP_FILE = file.path("_Zones/gem2005_BKR.shp") # Landern
 GERMANY = file.path("Deu_admin/DEU_adm0.shp") #border of germany
 
 RU.DIR = "_DOY/" # DOY geotif file
