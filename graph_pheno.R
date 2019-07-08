@@ -47,7 +47,7 @@ period_labelling = function(from, to){
 }
 
 
-tif_info = extract_tif_info(RU.DIR)
+tif_info = extract_tif_info(RU_DIR)
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 s = sp::spTransform(s, raster::crs(germany))

@@ -9,7 +9,7 @@ library(lubridate)
 
 source("functions_Pheno.R")
 # all the geotif
-tif_info = extract_tif_info(RU.DIR)
+tif_info = extract_tif_info(RU_DIR)
 
 s = raster::shapefile(SHP_FILE)
 

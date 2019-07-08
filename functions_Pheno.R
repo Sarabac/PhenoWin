@@ -2,7 +2,7 @@
 library(tidyverse)
 library(lubridate)
 
-source("variables_pheno.R")
+source("variables_pheno.py")
 
 extract_n = function(dat, n){
   # extract a number of length n from a character vector

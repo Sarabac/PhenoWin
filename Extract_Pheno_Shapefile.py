@@ -8,6 +8,7 @@ import pandas as pd
 import os
 import re
 import sqlite3
+import variables_pheno
 
 
 def getFeatures(gdf, n):
@@ -33,11 +34,7 @@ def extract_tif_info(directory):
     }))
 
 
-TIF_DIR = "_DOY"
-SHP_ID = "ID_1"
-DB_DIR = "DOY.db"
-
-tif_info = extract_tif_info(TIF_DIR)
+tif_info = extract_tif_info(variables_pheno.RU_DIR)
 
 lander = gpd.read_file("_Zones/gem2005_BKR.shp")
 # reproject with the first raster
@@ -46,13 +43,13 @@ with rasterio.open(tif_info["dir"][0]) as src:
 geojsons = [getFeatures(lander, i) for i in range(len(lander))]
 
 try:
-    os.remove(DB_DIR)
+    os.remove(variables_pheno.DB_DIR)
 except FileNotFoundError:
     pass
 
-conn = sqlite3.connect(DB_DIR)
+conn = sqlite3.connect(variables_pheno.DB_DIR)
 
-IDs = list(lander[SHP_ID])
+IDs = list(lander[variables_pheno.SHP_ID])
 for inf in range(len(tif_info)):
     geotif = rasterio.open(tif_info.iloc[inf]["dir"])
     for i in range(len(IDs)):
