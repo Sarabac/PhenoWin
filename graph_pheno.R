@@ -8,10 +8,8 @@ library(shiny)
 library(leaflet)
 library(lubridate)
 
-source("variables_pheno.R")
 source("functions_Pheno.R")
 
-print("OK")
 build_DOY_graph = function(dat){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:

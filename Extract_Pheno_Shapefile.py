@@ -39,7 +39,7 @@ DB_DIR = "DOY.db"
 
 tif_info = extract_tif_info(TIF_DIR)
 
-lander = gpd.read_file("Deu_admin/DEU_adm1.shp")
+lander = gpd.read_file("_Zones/gem2005_BKR.shp")
 # reproject with the first raster
 with rasterio.open(tif_info["dir"][0]) as src:
     lander = lander.to_crs(crs=src.crs.data)
@@ -69,7 +69,7 @@ for inf in range(len(tif_info)):
         else:
             weighted_pixels = weighted_pixels.append(day_weight)
     geotif.close()  # close the raster
-    weighted_pixels.to_sql("PIXEL", conn, index=False, if_exists="append")
+    weighted_pixels.to_sql("PIXEL", conn, if_exists="append")
     print("processing: {}/{}".format(inf, len(tif_info)))
 
 cursor = conn.cursor()
@@ -84,5 +84,5 @@ group by s.Area,s.Crop) from START_END s
 """)
 cursor.fetchall()
 cursor.execute("""
-Drop view Period_length
+select sqlite3_step()  from START_END
 """)
