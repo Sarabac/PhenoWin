@@ -2,13 +2,16 @@
 import geopandas as gpd
 import rasterio
 from rasterio.mask import mask
-from rasterio.plot import show
+# from rasterio.plot import show
 import json
 import pandas as pd
 import os
 import re
 import sqlite3
 from threading import Thread, Lock, Semaphore
+from datetime import datetime
+
+datetime.strptime("2018-200", "%Y-%j")
 
 
 def getFeatures(gdf, n):
@@ -43,7 +46,6 @@ class Extractor(Thread):
     def __init__(self, tif_info, polygons, IDs, conn):
         Thread.__init__(self)
         self.infos = tif_info
-        self.geotif_dir = tif_info["dir"]
         self.polygons = polygons
         self.IDs = IDs
         self.conn = conn
@@ -55,7 +57,7 @@ class Extractor(Thread):
         flag = True
         while flag:
             try:
-                geotif = rasterio.open(self.geotif_dir)
+                geotif = rasterio.open(self.infos["dir"])
             except rasterio.RasterioIOError:
                 # wait for another thread finishing it process
                 Extractor.raster_access.acquire(True)
@@ -94,7 +96,8 @@ DB_DIR = "DOY.db"
 tif_info = extract_tif_info(TIF_DIR)
 
 lander = gpd.read_file("Deu_admin/DEU_adm1.shp")
-with rasterio.open(tif_info["dir"][1]) as src:
+# reproject with the first raster
+with rasterio.open(tif_info["dir"][0]) as src:
     lander = lander.to_crs(crs=src.crs.data)
 geojsons = [getFeatures(lander, i) for i in range(len(lander))]
 
@@ -102,16 +105,15 @@ try:
     os.remove(DB_DIR)
 except FileNotFoundError:
     pass
-conn = sqlite3.connect(DB_DIR)
 
+conn = sqlite3.connect(DB_DIR)
 extras = [Extractor(tif_info.iloc[i], geojsons, list(lander[SHP_ID]), conn)
           for i in range(len(tif_info))]
-for extra in extras[:30]:
+for extra in extras:
     extra.run()
 
-
+cursor = conn.cursor()
+with open("views.sql") as queryfile:
+    cursor.executescript(queryfile.read())
+conn.commit()
 conn.close()
-
-
-# f = lander.plot()
-# g = show(test)
