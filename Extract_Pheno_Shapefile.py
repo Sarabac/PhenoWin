@@ -11,10 +11,11 @@ import sqlite3
 import variables_pheno
 
 
-def getFeatures(gdf, n):
+def getFeatures(gdf):
     """Function to parse features from GeoDataFrame in such a manner
     that rasterio wants them"""
-    return [json.loads(gdf.to_json())['features'][n]['geometry']]
+    to_json = json.loads(gdf.to_json())
+    return [[to_json['features'][n]['geometry']] for n in range(len(gdf))]
 
 
 def extract_n(dat, n):
@@ -36,12 +37,12 @@ def extract_tif_info(directory):
 
 tif_info = extract_tif_info(variables_pheno.RU_DIR)
 
-lander = gpd.read_file("_Zones/gem2005_BKR.shp")
+lander = gpd.read_file(variables_pheno.SHP_FILE)
 # reproject with the first raster
 with rasterio.open(tif_info["dir"][0]) as src:
     lander = lander.to_crs(crs=src.crs.data)
-geojsons = [getFeatures(lander, i) for i in range(len(lander))]
-
+#geojsons = [getFeatures(lander, i) for i in range(len(lander))]
+geojsons = getFeatures(lander)
 try:
     os.remove(variables_pheno.DB_DIR)
 except FileNotFoundError:
