@@ -8,12 +8,14 @@ import pandas as pd
 import os
 import re
 import sqlite3
+import variables_pheno
 
 
-def getFeatures(gdf, n):
+def getFeatures(gdf):
     """Function to parse features from GeoDataFrame in such a manner
     that rasterio wants them"""
-    return [json.loads(gdf.to_json())['features'][n]['geometry']]
+    to_json = json.loads(gdf.to_json())
+    return [[to_json['features'][n]['geometry']] for n in range(len(gdf))]
 
 
 def extract_n(dat, n):
@@ -33,26 +35,22 @@ def extract_tif_info(directory):
     }))
 
 
-TIF_DIR = "_DOY"
-SHP_ID = "ID_1"
-DB_DIR = "DOY.db"
+tif_info = extract_tif_info(variables_pheno.RU_DIR)
 
-tif_info = extract_tif_info(TIF_DIR)
-
-lander = gpd.read_file("Deu_admin/DEU_adm1.shp")
+lander = gpd.read_file(variables_pheno.SHP_FILE)
 # reproject with the first raster
 with rasterio.open(tif_info["dir"][0]) as src:
     lander = lander.to_crs(crs=src.crs.data)
-geojsons = [getFeatures(lander, i) for i in range(len(lander))]
-
+#geojsons = [getFeatures(lander, i) for i in range(len(lander))]
+geojsons = getFeatures(lander)
 try:
-    os.remove(DB_DIR)
+    os.remove(variables_pheno.DB_DIR)
 except FileNotFoundError:
     pass
 
-conn = sqlite3.connect(DB_DIR)
+conn = sqlite3.connect(variables_pheno.DB_DIR)
 
-IDs = list(lander[SHP_ID])
+IDs = list(lander[variables_pheno.SHP_ID])
 for inf in range(len(tif_info)):
     geotif = rasterio.open(tif_info.iloc[inf]["dir"])
     for i in range(len(IDs)):
@@ -69,7 +67,7 @@ for inf in range(len(tif_info)):
         else:
             weighted_pixels = weighted_pixels.append(day_weight)
     geotif.close()  # close the raster
-    weighted_pixels.to_sql("PIXEL", conn, index=False, if_exists="append")
+    weighted_pixels.to_sql("PIXEL", conn, if_exists="append")
     print("processing: {}/{}".format(inf, len(tif_info)))
 
 cursor = conn.cursor()
@@ -84,5 +82,5 @@ group by s.Area,s.Crop) from START_END s
 """)
 cursor.fetchall()
 cursor.execute("""
-Drop view Period_length
+select sqlite3_step()  from START_END
 """)

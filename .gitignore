@@ -1,3 +1,5 @@
 *.tif
 .Rhistory
 test*
+venv*
+__pycache__*
