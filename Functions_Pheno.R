@@ -4,8 +4,8 @@ library(lubridate)
 
 # variables
 # variables
-SHP_FILE = file.path("Deu_admin/gem2005_BKR.shp") # Landern
-GERMANY = file.path("Deu_admin/DEU_adm0.shp") #border of germany
+SHP_FILE = file.path("_Zones/gem2005_BKR_simple.shp") # Landern
+GERMANY = file.path("_Zones/DEU_adm0.shp") #border of germany
 
 RU.DIR = "_DOY/" # DOY geotif file
 DATA_FOLDER = "_Data" # where the result of Extract_Pheno_Shapefile is stored
@@ -103,7 +103,7 @@ extract_DOY = function(x,y, ID_var_poly =""){
 }
 
 extract_point = function(infos, r, p){
-  repro = sp::spTransform(p, raster::crs(sta))
+  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
   v = r$extract_points(repro)
   da = tibble(DOY = c(v), Area = 1, weight = 1) %>%
     cbind(infos) %>% extract_date()

@@ -8,9 +8,8 @@ library(shiny)
 library(leaflet)
 library(lubridate)
 
-source("functions_Pheno.R")
+source("Functions_Pheno.R")
 
-print("OK")
 build_DOY_graph = function(dat){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:
@@ -105,17 +104,33 @@ server = function(input, output){
       if (input$mapChoice == 0){
         info = select_crop()
         point = creat_point()
-        Pd = extract_point(info[1], info[2], )
+        Pd = extract_point(info[[1]], info[[2]], point)
         dat = cumsum_Pheno(Pd, digit = 1)
         # create a marker were the data is extraxted
 
       }else{
       # extract the pre-processed data for the selected crop
-      Pdoy = readRDS(DATA_FILE(SCrop))
       # the ID of the selected polygon
-      area_id = as.integer(input$map_shape_click[["id"]])
-      if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
-      dat = Pdoy %>% filter(Area == area_id )
+      globid <<- input$map_shape_click[["id"]]
+      info = select_crop()
+      p = s[s$ID_1 == globid,]
+      infos <<- info[[1]]
+      r = info[[2]]
+      ras <<- r
+      repro <<- sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
+      v <<- r$extract(repro)[[1]]
+      join = 1:dim(v)[[2]]
+      colnames(v) = join
+      infos$join = as.character(join)
+      Pd = as_tibble(v) %>% gather("join", "DOY") %>%
+        inner_join(infos) %>%
+        group_by(P, Year, Crop) %>% 
+        mutate(DOY = round(DOY), weight = 1/n()) %>% 
+        group_by(P, Year, Crop, DOY) %>% 
+        summarise(weight = sum(weight)) %>% 
+        mutate(Area = globid) %>% 
+        extract_date()
+      dat = cumsum_Pheno(Pd, digit = 1)
       }
 
       return(dat)
