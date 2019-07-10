@@ -1,13 +1,15 @@
 
-W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Working directory
+#W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
 #W.DIR = "/home/luxis/Dropbox/Kuhn/phenology/PhenoWin"
+W.DIR = "L:/Lucas/phenology/PhenoWin"
 setwd(W.DIR)
 
 
 library(tidyverse)
 library(lubridate)
 
-source("functions_Pheno.R")
+source("Functions_Pheno.R")
 # all the geotif
 tif_info = extract_tif_info(RU_DIR)
 
