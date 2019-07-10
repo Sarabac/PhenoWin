@@ -8,7 +8,6 @@ library(shiny)
 library(leaflet)
 library(lubridate)
 
-source("variables_pheno.R")
 source("functions_Pheno.R")
 
 print("OK")
@@ -50,6 +49,7 @@ period_labelling = function(from, to){
 
 
 tif_info = extract_tif_info(RU.DIR)
+
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 s = sp::spTransform(s, raster::crs(germany))
@@ -89,26 +89,23 @@ server = function(input, output){
     point = sp::SpatialPoints(cbind(c(lng), c(lat)), sp::CRS("+proj=longlat +datum=WGS84"))
     return(point)
   })
+  
+  select_crop = reactive({
+    SCrop = input$CropSelect
+    return(readRDS(DATA_FILE(SCrop)))
+    })
 
   filter_Area = reactive({
     # create the data frame for te map
     # depending of the choices of the user
     if(!is.null(input$map_shape_click)){
-      SCrop = input$CropSelect
       proxy = leafletProxy("map")
       proxy %>% clearMarkers() %>%
         addMarkers(data = creat_point())
       if (input$mapChoice == 0){
-        from = input$DatesMerge[1]
-        to = input$DatesMerge[2]
-        minYear = year(ymd(from)) -1
-        maxYear = year(ymd(to)) +1
-        selected_tif = tif_info %>%
-          filter(Crop == SCrop & Year >= minYear & Year <= maxYear) %>%
-          pull(dir)
-        ph.ct = raster::stack(selected_tif )
+        info = select_crop()
         point = creat_point()
-        Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
+        Pd = extract_point(info[1], info[2], )
         dat = cumsum_Pheno(Pd, digit = 1)
         # create a marker were the data is extraxted
 
