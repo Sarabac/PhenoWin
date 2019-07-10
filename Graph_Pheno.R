@@ -61,8 +61,8 @@ ui = fluidPage(
   fluidRow(column(10,
                   leafletOutput("map")),
           column(2,
-                 radioButtons("mapChoice", "Map level",
-                        c("Contry" = 0, "Landern" = 1),
+                 radioButtons("mapChoice", "Mode",
+                        c("Point" = 0, "Zone" = 1),
                         selected = 0),
                 selectInput("CropSelect", "Select Crop",
                             choices = CROPS_CORRESPONDANCE, selected = 201)
