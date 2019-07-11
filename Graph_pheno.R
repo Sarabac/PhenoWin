@@ -128,7 +128,7 @@ server = function(input, output){
       to = input$DatesMerge[2]
       label_period = period_labelling(from,to)
       # name of the selected area
-
+      
        dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>%
          build_DOY_graph() +
         scale_x_date(name = "DOY", date_breaks = label_period,  labels = scales::date_format("%j"),

@@ -1,6 +1,6 @@
 #W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
-W.DIR = "/home/luxis/Dropbox/Kuhn/phenology/PhenoWin"
-#W.DIR = "L:\\Lucas\\phenology\\PhenoWin"
+#W.DIR = "/home/luxis/Dropbox/Kuhn/phenology/PhenoWin"
+W.DIR = "L:\\Lucas\\phenology\\PhenoWin"
 setwd(W.DIR)
 
 

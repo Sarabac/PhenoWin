@@ -62,9 +62,10 @@ extract_tif_info = function(directory){
     filter(str_detect(.$dir, ".tif$")) %>% # take all the .tif files
     bind_cols(extract_code(.$dir))
 }
+
 extract_date = function(dat){
   mutate(dat, DOY = round(DOY)) %>%
-    mutate(Date = as.Date(paste(Year,01,01,sep="-")) + days(DOY-1))
+    mutate(Date = as.Date(paste(Year,DOY,sep="-"), "%Y-%j"))
 }
 
 
@@ -128,12 +129,13 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
                by = c("Area", "Crop", "P_order"))
 
   sum_weight = left_join(total_period, weighted_pixels, by = c("Area", "Crop", "Date", "P")) %>%
-    fill(P) %>% mutate(weight = replace_na(weight, 0)) %>%
+    fill(P) %>% mutate(weight = replace_na(weight, 0)) %>% # fill the NA caused by the left join
     mutate(Year = year(Date)) %>%
     group_by(Area, Crop, P_order) %>%
     mutate(sum_weight = round(cumsum(weight), digit = digit)) %>%
-    filter(sum_weight > 0) %>%
-    ungroup()
+    filter(sum_weight > 0) %>% # remove useless dates
+    ungroup() %>% 
+    arrange(P_order)
 
   return(sum_weight)
 }
