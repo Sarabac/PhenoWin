@@ -3,12 +3,14 @@
 W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(W.DIR)
 
+source("Functions_Pheno.R")
+
 library(tidyverse)
 library(shiny)
 library(leaflet)
 library(lubridate)
 
-source("Functions_Pheno.R")
+
 
 build_DOY_graph = function(dat){
   # create the Phenological graph from the data frame "dat"

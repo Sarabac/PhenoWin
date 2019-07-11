@@ -3,11 +3,12 @@
 W.DIR = "L:\\Lucas\\phenology\\PhenoWin"
 setwd(W.DIR)
 
+source("Functions_Pheno.R")
 
 library(tidyverse)
 library(lubridate)
 
-source("Functions_Pheno.R")
+
 
 tif_info = extract_tif_info(RU.DIR)
 crop_list = unique(tif_info$Crop)

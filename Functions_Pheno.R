@@ -1,3 +1,9 @@
+
+list.of.packages = c("tidyverse", "lubridate", "sp",
+                     "raster", "velox", "shiny", "leaflet", "scales")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+
 # functions used to extract the data and build the graphs
 library(tidyverse)
 library(lubridate)
