@@ -93,17 +93,17 @@ server = function(input, output){
     # depend of the choices of the user
     polyid = input$map_shape_click[["id"]]
     feature = input$map_draw_all_features
-    proxy = leafletProxy("map")
-    proxy %>% removeShape("selected")
+
     if(!is.null(feature)&input$mapChoice == 0){
       shape = create_feature(feature)
     }else if(!is.null(polyid) & input$mapChoice == 1){
+      proxy = leafletProxy("map")
+      proxy %>% removeShape("selected")
       if(polyid != "selected"){
       shape = s[s$ID_1 == polyid,]
       proxy %>% addPolygons(data = shape, layerId = "selected",
                             fillColor = "yellow")
       }else{
-        proxy %>% removeShape("selected")
         return(NULL)
         }
     } else{
