@@ -8,10 +8,8 @@ library(shiny)
 library(leaflet)
 library(lubridate)
 
-source("variables_pheno.R")
-source("functions_Pheno.R")
+source("Functions_Pheno.R")
 
-print("OK")
 build_DOY_graph = function(dat){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:
@@ -49,22 +47,22 @@ period_labelling = function(from, to){
 }
 
 
-tif_info = extract_tif_info(RU.DIR)
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 s = sp::spTransform(s, raster::crs(germany))
+
 # the minimal value of the time scale
-minDate = as.Date(paste(min(tif_info$Year), "01","01", sep = "-"))
+minDate = as.Date("1993-01-01")
 # the maximale value of the time scale
-maxDate = as.Date(paste(max(tif_info$Year) + 1, "01","01", sep = "-"))
+maxDate = as.Date(today() + years(1))
 
 # widgets of the shiny app
 ui = fluidPage(
   fluidRow(column(10,
                   leafletOutput("map")),
           column(2,
-                 radioButtons("mapChoice", "Map level",
-                        c("Contry" = 0, "Landern" = 1),
+                 radioButtons("mapChoice", "Mode",
+                        c("Point" = 0, "Zone" = 1),
                         selected = 0),
                 selectInput("CropSelect", "Select Crop",
                             choices = CROPS_CORRESPONDANCE, selected = 201)
@@ -89,39 +87,34 @@ server = function(input, output){
     point = sp::SpatialPoints(cbind(c(lng), c(lat)), sp::CRS("+proj=longlat +datum=WGS84"))
     return(point)
   })
+  
+  select_crop = reactive({
+    # load the velox object corresponding to the selected crop
+    SCrop = input$CropSelect
+    return(readRDS(DATA_FILE(SCrop)))
+    })
 
   filter_Area = reactive({
     # create the data frame for te map
-    # depending of the choices of the user
+    # depend of the choices of the user
     if(!is.null(input$map_shape_click)){
-      SCrop = input$CropSelect
+      # draw the point on the map
       proxy = leafletProxy("map")
       proxy %>% clearMarkers() %>%
         addMarkers(data = creat_point())
+      info = select_crop()
+      polyid = input$map_shape_click[["id"]]
+      # polyid is null in Point mode
       if (input$mapChoice == 0){
-        from = input$DatesMerge[1]
-        to = input$DatesMerge[2]
-        minYear = year(ymd(from)) -1
-        maxYear = year(ymd(to)) +1
-        selected_tif = tif_info %>%
-          filter(Crop == SCrop & Year >= minYear & Year <= maxYear) %>%
-          pull(dir)
-        ph.ct = raster::stack(selected_tif )
-        point = creat_point()
-        Pd = extract_DOY(ph.ct, sp::spTransform(point, raster::crs(ph.ct)))
-        dat = cumsum_Pheno(Pd, digit = 1)
-        # create a marker were the data is extraxted
-
+        # Point mode
+        Pd = extract_point(info[[1]], info[[2]], creat_point())
+      }else if(input$mapChoice == 1 & !is.null(polyid)){
+        # Zone mode
+        Pd = extract_polygon(info[[1]], info[[2]], s[s$ID_1 == polyid,])
       }else{
-      # extract the pre-processed data for the selected crop
-      Pdoy = readRDS(DATA_FILE(SCrop))
-      # the ID of the selected polygon
-      area_id = as.integer(input$map_shape_click[["id"]])
-      if(!(area_id %in% Pdoy$Area)){area_id = unique(Pdoy$Area)[1]}
-      dat = Pdoy %>% filter(Area == area_id )
+        return(NULL)
       }
-
-      return(dat)
+      return(cumsum_Pheno(Pd, digit = 2))
     }else{
       return(NULL)
     }
@@ -129,7 +122,6 @@ server = function(input, output){
   })
 
   output$DOY_GRAPH = renderPlot({
-
     dat = filter_Area()
     if(!is.null(dat)){
       from = input$DatesMerge[1]
@@ -147,13 +139,14 @@ server = function(input, output){
   output$map = renderLeaflet({
     # Define the map
     if(input$mapChoice == 0){
+      # Point mode
       map = leaflet(germany) %>%
         addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
                     opacity = 1.0, fillOpacity = 0,
-                    layerId = germany@data$ID_0,
                     highlightOptions = highlightOptions(color = "red", weight = 3,
                                                         bringToFront = TRUE))
     }else{
+      # Zone mode
       map = leaflet(s) %>%
       addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
@@ -163,7 +156,6 @@ server = function(input, output){
                                                       bringToFront = TRUE))
     }
     return(map %>% addTiles())
-
   })
 }
 
