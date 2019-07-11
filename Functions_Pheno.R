@@ -17,6 +17,7 @@ RU.DIR = "_DOY/" # DOY geotif file
 DATA_FOLDER = "_Data" # where the result of Extract_Pheno_Shapefile is stored
 DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 # Access the phenological data of the Crop "n", ready for the graph
+LEAFLET_CRS = sp::CRS("+proj=longlat +datum=WGS84")
 
 ### Colors corresponding to each phenological stage
 CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
@@ -144,4 +145,27 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
     arrange(P_order)
 
   return(sum_weight)
+}
+
+create_feature = function(feature){
+  # extract the coordinate of points returned by leaflet
+  co = feature[["features"]][[1]][["geometry"]][["coordinates"]]
+  if(feature[["features"]][[1]][["geometry"]][["type"]] == "Polygon"){
+    coor = co[[1]]
+    xy = tibble(x_coord = NA, y_coord = NA, .rows = length(coor))
+    for(a in 1:length(coor)){
+      for(b in 1:length(coor[[a]])){
+        xy[a,b] = coor[[a]][[b]]
+      }
+    }
+    p = sp::Polygon(xy)
+    ps = sp::Polygons(list(p),1)
+    sps = sp::SpatialPolygons(list(ps))
+  }else{
+    p = cbind(c(co[[1]]), c(co[[2]]))
+    sps = sp::SpatialPoints(p)
+  }
+  # assign the WG84 projection
+  proj4string(sps) = LEAFLET_CRS
+  return(sps)
 }

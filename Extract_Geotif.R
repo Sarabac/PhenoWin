@@ -9,7 +9,6 @@ library(tidyverse)
 library(lubridate)
 
 
-
 tif_info = extract_tif_info(RU.DIR)
 crop_list = unique(tif_info$Crop)
 i = 0

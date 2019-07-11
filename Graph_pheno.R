@@ -8,6 +8,7 @@ source("Functions_Pheno.R")
 library(tidyverse)
 library(shiny)
 library(leaflet)
+library(leaflet.extras)
 library(lubridate)
 
 
@@ -80,15 +81,6 @@ ui = fluidPage(
 
 
 server = function(input, output){
-
-  creat_point = reactive({
-    # creat a spatialpoint after a click on the map
-    click = input$map_shape_click
-    lng = click[["lng"]]
-    lat = click[["lat"]]
-    point = sp::SpatialPoints(cbind(c(lng), c(lat)), sp::CRS("+proj=longlat +datum=WGS84"))
-    return(point)
-  })
   
   select_crop = reactive({
     # load the velox object corresponding to the selected crop
@@ -99,28 +91,33 @@ server = function(input, output){
   filter_Area = reactive({
     # create the data frame for te map
     # depend of the choices of the user
-    if(!is.null(input$map_shape_click)){
-      # draw the point on the map
-      proxy = leafletProxy("map")
-      proxy %>% clearMarkers() %>%
-        addMarkers(data = creat_point())
-      info = select_crop()
-      polyid = input$map_shape_click[["id"]]
-      # polyid is null in Point mode
-      if (input$mapChoice == 0){
-        # Point mode
-        Pd = extract_point(info[[1]], info[[2]], creat_point())
-      }else if(input$mapChoice == 1 & !is.null(polyid)){
-        # Zone mode
-        Pd = extract_polygon(info[[1]], info[[2]], s[s$ID_1 == polyid,])
+    polyid = input$map_shape_click[["id"]]
+    feature = input$map_draw_all_features
+    proxy = leafletProxy("map")
+    proxy %>% removeShape("selected")
+    if(!is.null(feature)&input$mapChoice == 0){
+      shape = create_feature(feature)
+    }else if(!is.null(polyid) & input$mapChoice == 1){
+      if(polyid != "selected"){
+      shape = s[s$ID_1 == polyid,]
+      proxy %>% addPolygons(data = shape, layerId = "selected",
+                            fillColor = "yellow")
       }else{
+        proxy %>% removeShape("selected")
         return(NULL)
-      }
-      return(cumsum_Pheno(Pd, digit = 2))
-    }else{
+        }
+    } else{
       return(NULL)
     }
-
+    
+    info = select_crop()
+    if(class(shape)[1] == "SpatialPoints"){
+      Pd = extract_point(info[[1]], info[[2]], shape)
+    }else{
+      Pd = extract_polygon(info[[1]], info[[2]], shape)
+    }
+    return(cumsum_Pheno(Pd, digit = 2))
+    
   })
 
   output$DOY_GRAPH = renderPlot({
@@ -146,15 +143,24 @@ server = function(input, output){
         addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
                     opacity = 1.0, fillOpacity = 0,
                     highlightOptions = highlightOptions(color = "red", weight = 3,
-                                                        bringToFront = TRUE))
+                                                        bringToFront = TRUE)) %>% 
+        addDrawToolbar(
+          polylineOptions = FALSE,
+          circleOptions = FALSE,
+          rectangleOptions = FALSE,
+          circleMarkerOptions = FALSE,
+          polygonOptions = TRUE,
+          markerOptions = TRUE,
+          singleFeature = TRUE,
+          editOptions = editToolbarOptions(remove = FALSE)
+        )
     }else{
       # Zone mode
       map = leaflet(s) %>%
       addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
-                  opacity = 1.0, fillOpacity = 0.5,
-                  fillColor = "red",
+                  opacity = 1.0, fillOpacity = 0,
                   layerId = s@data$ID_1,
-                  highlightOptions = highlightOptions(color = "white", weight = 3,
+                  highlightOptions = highlightOptions(color = "red", weight = 3,
                                                       bringToFront = TRUE))
     }
     return(map %>% addTiles())
