@@ -68,45 +68,28 @@ extract_date = function(dat){
 }
 
 
-extract_DOY = function(x,y, ID_var_poly =""){
-  # x : raster
-  # y : spatialpolygon or spatialpoint
-  # ID_var: character, the name of the id variable
-  # in the polygon dataset ( other than "ID")
-  pixels = raster::extract(x, y, weights = TRUE, normalizeWeights=TRUE, progress='text')
-  if("SpatialPoints" %in% class(y)){
-    weighted_pixels = as_tibble(pixels)%>%
-      gather("name", "DOY", factor_key = TRUE) %>%
-      drop_na() %>%
-      mutate(DOY = round(DOY), Area = 1, weight = 1)
-  }else{
-    for(i in 1:length(pixels)){
-      dat = as_tibble(pixels[[i]]) %>%
-        gather("name", "DOY", -weight, factor_key = TRUE)%>%
-        drop_na() %>%
-        mutate(DOY = round(DOY)) %>%
-        group_by(name, DOY) %>%
-        summarise(weight = sum(weight)) %>%
-        ungroup() %>%
-        ## assign the corresponding ID
-        mutate(Area = pull(s@data, ID_var_poly)[[i]])
-      if(i==1){
-        weighted_pixels = dat
-      }else{
-        weighted_pixels = rbind(weighted_pixels, dat)
-      }
-    }}
-
-  return(weighted_pixels %>%
-           bind_cols(extract_code(.$name)) %>%
-           mutate(Date = as.Date(paste(Year,01,01,sep="-")) + days(DOY-1)))
-}
-
 extract_point = function(infos, r, p){
   repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
   v = r$extract_points(repro)
   da = tibble(DOY = c(v), Area = 1, weight = 1) %>%
     cbind(infos) %>% extract_date()
+}
+
+extract_polygon = function(infos, r, p){
+  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
+  v = r$extract(repro)[[1]]
+  join = 1:dim(v)[[2]]
+  colnames(v) = join
+  infos$join = as.character(join)
+  Pd = as_tibble(v) %>% gather("join", "DOY") %>%
+    inner_join(infos, by="join") %>%
+    group_by(P, Year, Crop) %>% 
+    mutate(DOY = round(DOY), weight = 1/n()) %>% 
+    group_by(P, Year, Crop, DOY) %>% 
+    summarise(weight = sum(weight)) %>% 
+    mutate(Area = 1) %>% 
+    extract_date()
+  return(Pd)
 }
 
 

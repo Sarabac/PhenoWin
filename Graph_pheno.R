@@ -47,15 +47,13 @@ period_labelling = function(from, to){
 }
 
 
-tif_info = extract_tif_info(RU.DIR)
-
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 s = sp::spTransform(s, raster::crs(germany))
 # the minimal value of the time scale
-minDate = as.Date(paste(min(tif_info$Year), "01","01", sep = "-"))
+minDate = as.Date("1993-01-01")
 # the maximale value of the time scale
-maxDate = as.Date(paste(max(tif_info$Year) + 1, "01","01", sep = "-"))
+maxDate = as.Date(lubridate::today() + lubridate::years(1))
 
 # widgets of the shiny app
 ui = fluidPage(
@@ -101,39 +99,20 @@ server = function(input, output){
       proxy = leafletProxy("map")
       proxy %>% clearMarkers() %>%
         addMarkers(data = creat_point())
+      info = select_crop()
       if (input$mapChoice == 0){
-        info = select_crop()
         point = creat_point()
         Pd = extract_point(info[[1]], info[[2]], point)
-        dat = cumsum_Pheno(Pd, digit = 1)
         # create a marker were the data is extraxted
 
       }else{
-      # extract the pre-processed data for the selected crop
-      # the ID of the selected polygon
-      globid <<- input$map_shape_click[["id"]]
-      info = select_crop()
-      p = s[s$ID_1 == globid,]
-      infos <<- info[[1]]
-      r = info[[2]]
-      ras <<- r
-      repro <<- sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
-      v <<- r$extract(repro)[[1]]
-      join = 1:dim(v)[[2]]
-      colnames(v) = join
-      infos$join = as.character(join)
-      Pd = as_tibble(v) %>% gather("join", "DOY") %>%
-        inner_join(infos) %>%
-        group_by(P, Year, Crop) %>% 
-        mutate(DOY = round(DOY), weight = 1/n()) %>% 
-        group_by(P, Year, Crop, DOY) %>% 
-        summarise(weight = sum(weight)) %>% 
-        mutate(Area = globid) %>% 
-        extract_date()
-      dat = cumsum_Pheno(Pd, digit = 1)
+        # extract the pre-processed data for the selected crop
+        # the ID of the selected polygon
+        polyid = input$map_shape_click[["id"]]
+        Pd = extract_polygon(info[[1]], info[[2]], s[s$ID_1 == polyid,])
       }
 
-      return(dat)
+      return(cumsum_Pheno(Pd, digit = 1))
     }else{
       return(NULL)
     }
