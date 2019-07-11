@@ -69,25 +69,38 @@ extract_date = function(dat){
 
 
 extract_point = function(infos, r, p){
+  # infos: data frame contaning  the crp, date, stage
+  # r: velox object
+  # p: point
   repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
   v = r$extract_points(repro)
+  # join the extracted values and the data frame
   da = tibble(DOY = c(v), Area = 1, weight = 1) %>%
-    cbind(infos) %>% extract_date()
+    cbind(infos) %>% drop_na() %>%  extract_date()
+  return(da)
 }
 
 extract_polygon = function(infos, r, p){
+  # infos: data frame contaning  the crp, date, stage
+  # r: velox object
+  # p: point
   repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
   v = r$extract(repro)[[1]]
   join = 1:dim(v)[[2]]
+  # create an index column to join the pixels
+  # and their infos
   colnames(v) = join
   infos$join = as.character(join)
   Pd = as_tibble(v) %>% gather("join", "DOY") %>%
     inner_join(infos, by="join") %>%
-    group_by(P, Year, Crop) %>% 
+    group_by(P, Year, Crop) %>%
     mutate(DOY = round(DOY), weight = 1/n()) %>% 
-    group_by(P, Year, Crop, DOY) %>% 
+    group_by(P, Year, Crop, DOY) %>%
+    # calculate the proportion of each DOY
+    # in the polygon
     summarise(weight = sum(weight)) %>% 
-    mutate(Area = 1) %>% 
+    mutate(Area = 1) %>%
+    drop_na() %>% 
     extract_date()
   return(Pd)
 }
@@ -114,7 +127,7 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
                  select(Area, Crop, P, P_order),
                by = c("Area", "Crop", "P_order"))
 
-  sum_weight = left_join(total_period, weighted_pixels, by = c("Area", "Crop", "Date", "P")) %>% # if 2 phen have the same DOY ?
+  sum_weight = left_join(total_period, weighted_pixels, by = c("Area", "Crop", "Date", "P")) %>%
     fill(P) %>% mutate(weight = replace_na(weight, 0)) %>%
     mutate(Year = year(Date)) %>%
     group_by(Area, Crop, P_order) %>%
