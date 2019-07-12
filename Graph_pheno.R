@@ -68,7 +68,9 @@ ui = fluidPage(
                         c("Point" = 0, "Zone" = 1),
                         selected = 0),
                 selectInput("CropSelect", "Select Crop",
-                            choices = CROPS_CORRESPONDANCE, selected = 201)
+                            choices = CROPS_CORRESPONDANCE, selected = 201),
+                fileInput("geofile", "Import Geojson",
+                          accept = c(".geojson"))
            )),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
@@ -81,6 +83,12 @@ ui = fluidPage(
 
 
 server = function(input, output){
+  
+  observe({
+    req(input$geofile)
+    test <<- rgdal::readOGR(input$geofile$datapath)
+    print("OK")
+  })
   
   select_crop = reactive({
     # load the velox object corresponding to the selected crop
