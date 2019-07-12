@@ -75,24 +75,18 @@ extract_date = function(dat){
     mutate(Date = as.Date(paste(Year,"01-01",sep="-")) + days(DOY - 1))
 }
 
-
-extract_point = function(infos, r, p){
+extract_velox = function(infos, r, p){
   # infos: data frame contaning  the crp, date, stage
   # r: velox object
   # p: point
   repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
-  v = r$extract_points(repro)
-  # join the extracted values and the data frame
-  da = tibble(DOY = c(v), Area = 1, weight = 1) %>%
-    cbind(infos) %>% drop_na() %>%  extract_date()
-  return(da)
-}
-
-extract_polygon = function(infos, r, p){
-  # infos: data frame contaning  the crp, date, stage
-  # r: velox object
-  # p: point
-  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
+  
+  if(class(p)[1]%in% c("SpatialPoints", "SpatialPointsDataFrame")){
+    v = r$extract_points(repro)
+    # join the extracted values and the data frame
+    Pd = tibble(DOY = c(v), Area = 1, weight = 1) %>%
+      cbind(infos)
+  }else{ # if the object is a polygon
   v = r$extract(repro)[[1]]
   join = 1:dim(v)[[2]]
   # create an index column to join the pixels
@@ -107,11 +101,11 @@ extract_polygon = function(infos, r, p){
     # calculate the proportion of each DOY
     # in the polygon
     summarise(weight = sum(weight)) %>% 
-    mutate(Area = 1) %>%
-    drop_na() %>% 
-    extract_date()
-  return(Pd)
+    mutate(Area = 1)
+  }
+  return(Pd %>% drop_na() %>% extract_date())
 }
+
 
 date_cluster = function(date){
   # group together phenological change that
@@ -182,4 +176,40 @@ create_feature = function(feature){
   }
   # assign the WG84 projection
   return(sps)
+}
+
+build_DOY_graph = function(dat){
+  # create the Phenological graph from the data frame "dat"
+  # with 3 columns:
+  # "Date": class Date
+  # "sum_weight": between 0 and 1
+  # "P": phenological stage
+  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
+    geom_tile() +
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
+                   linetype = "Year"), size = 2)+
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
+                   linetype = "Month"))  +
+    labs(fill = "Phenology", alpha = "Probability") +
+    color_fill_custom +
+    scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
+    theme(axis.text.x=element_text(angle=30, hjust=1),
+          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
+  return(graph)
+}
+
+period_labelling = function(from, to){
+  # define the date break of the graph
+  # depending of the lenght of the time period
+  dif = ymd(to) - ymd(from)
+  label_period = case_when(
+    dif > 2100 ~ "1 month",
+    dif> 1800 ~ "4 week",
+    dif > 1000 ~ "3 week",
+    dif > 500 ~ "2 week",
+    dif > 200 ~ "1 week",
+    dif > 60 ~ "2 day",
+    TRUE ~ "1 day"
+  )
+  return(label_period)
 }
