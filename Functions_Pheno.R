@@ -72,7 +72,7 @@ extract_tif_info = function(directory){
 
 extract_date = function(dat){
   mutate(dat, DOY = round(DOY)) %>%
-    mutate(Date = as.Date(paste(Year,DOY,sep="-"), "%Y-%j"))
+    mutate(Date = as.Date(paste(Year,"01-01",sep="-")) + days(DOY - 1))
 }
 
 
@@ -113,24 +113,39 @@ extract_polygon = function(infos, r, p){
   return(Pd)
 }
 
+date_cluster = function(date){
+  # group together phenological change that
+  # happend in simalar date
+  # they correspond to the same event
+  dist_mat = dist(as.integer(date), method = 'euclidean')
+  hsingle <- hclust(dist_mat, method = "single") # cluster by min time periode
+  # if less than 10 day separate 2 same phenological stage: it is the same event
+  groups = cutree(hsingle, h=10) 
+  return(groups)
+}
 
 ####
 cumsum_Pheno = function(weighted_pixels, digit = 2){
   # digit : precision of the weight of the phenological stage
+  
   Pheno_order = weighted_pixels %>%
-    group_by(Area, Crop, Year, P) %>%
-    summarise(start = as.Date(min(Date)),
-              end = as.Date(max(Date)))%>%
+    group_by(Area, Crop, P) %>%
+    mutate(group = date_cluster(Date)) %>% 
+    group_by(Area, Crop, P, group) %>% 
+    summarise(start = min(Date),
+              end = max(Date))%>%
     group_by(Area, Crop) %>%
     arrange(Area, Crop, as.numeric(start)) %>%
     mutate(P_order = row_number()) %>%
+    # a phenological window stop when 
+    # all the pixels reach the next phinological stage
     mutate(stop = c(end[-1], last(end))) %>%
     ungroup()
-
+  # generate all the date in a phenological window
   total_period = Pheno_order %>%
     group_by(Area, Crop, P_order) %>%
-    expand(as.Date(seq.Date(start,stop, by="day"))) %>%
-    ungroup()%>% rename(Date = 4) %>%
+    expand(Date = as.Date(seq.Date(start,stop, by="day"))) %>%
+    ungroup() %>%
     inner_join(Pheno_order %>%
                  select(Area, Crop, P, P_order),
                by = c("Area", "Crop", "P_order"))
@@ -160,12 +175,11 @@ create_feature = function(feature){
     }
     p = sp::Polygon(xy)
     ps = sp::Polygons(list(p),1)
-    sps = sp::SpatialPolygons(list(ps))
+    sps = sp::SpatialPolygons(list(ps), proj4string=LEAFLET_CRS)
   }else{
     p = cbind(c(co[[1]]), c(co[[2]]))
-    sps = sp::SpatialPoints(p)
+    sps = sp::SpatialPoints(p, proj4string=LEAFLET_CRS)
   }
   # assign the WG84 projection
-  proj4string(sps) = LEAFLET_CRS
   return(sps)
 }
