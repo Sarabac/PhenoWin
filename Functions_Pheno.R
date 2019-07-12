@@ -75,24 +75,18 @@ extract_date = function(dat){
     mutate(Date = as.Date(paste(Year,"01-01",sep="-")) + days(DOY - 1))
 }
 
-
-extract_point = function(infos, r, p){
+extract_velox = function(infos, r, p){
   # infos: data frame contaning  the crp, date, stage
   # r: velox object
   # p: point
   repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
-  v = r$extract_points(repro)
-  # join the extracted values and the data frame
-  da = tibble(DOY = c(v), Area = 1, weight = 1) %>%
-    cbind(infos) %>% drop_na() %>%  extract_date()
-  return(da)
-}
-
-extract_polygon = function(infos, r, p){
-  # infos: data frame contaning  the crp, date, stage
-  # r: velox object
-  # p: point
-  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
+  
+  if(class(p)[1]%in% c("SpatialPoints", "SpatialPointsDataFrame")){
+    v = r$extract_points(repro)
+    # join the extracted values and the data frame
+    Pd = tibble(DOY = c(v), Area = 1, weight = 1) %>%
+      cbind(infos)
+  }else{ # if the object is a polygon
   v = r$extract(repro)[[1]]
   join = 1:dim(v)[[2]]
   # create an index column to join the pixels
@@ -107,11 +101,11 @@ extract_polygon = function(infos, r, p){
     # calculate the proportion of each DOY
     # in the polygon
     summarise(weight = sum(weight)) %>% 
-    mutate(Area = 1) %>%
-    drop_na() %>% 
-    extract_date()
-  return(Pd)
+    mutate(Area = 1)
+  }
+  return(Pd %>% drop_na() %>% extract_date())
 }
+
 
 date_cluster = function(date){
   # group together phenological change that
