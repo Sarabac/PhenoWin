@@ -11,45 +11,13 @@ library(leaflet)
 library(leaflet.extras)
 library(lubridate)
 
+# to upload large geojson files
+options(shiny.maxRequestSize=30*1024^2)
 
-
-build_DOY_graph = function(dat){
-  # create the Phenological graph from the data frame "dat"
-  # with 3 columns:
-  # "Date": class Date
-  # "sum_weight": between 0 and 1
-  # "P": phenological stage
-  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
-    geom_tile() +
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
-               linetype = "Year"), size = 2)+
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
-               linetype = "Month"))  +
-    labs(fill = "Phenology", alpha = "Probability") +
-    color_fill_custom +
-    scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
-    theme(axis.text.x=element_text(angle=30, hjust=1),
-          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
-  return(graph)
-}
-
-period_labelling = function(from, to){
-  # define the date break of the graph
-  # depending of the lenght of the time period
-  dif = ymd(to) - ymd(from)
-  label_period = case_when(
-    dif > 2100 ~ "1 month",
-    dif> 1800 ~ "4 week",
-    dif > 1000 ~ "3 week",
-    dif > 500 ~ "2 week",
-    dif > 200 ~ "1 week",
-    dif > 60 ~ "2 day",
-    TRUE ~ "1 day"
-  )
-  return(label_period)
-}
-
-
+shape_init = tibble(
+  name = c("germany", "Climat"),
+  path = c(GERMANY, SHP_FILE)
+)
 s = raster::shapefile(SHP_FILE)
 germany = raster::shapefile(GERMANY)
 s = sp::spTransform(s, raster::crs(germany))
@@ -65,8 +33,8 @@ ui = fluidPage(
                   leafletOutput("map")),
           column(2,
                  radioButtons("mapChoice", "Mode",
-                        c("Point" = 0, "Zone" = 1),
-                        selected = 0),
+                        c("Germany" = 1),
+                        selected = 1),
                 selectInput("CropSelect", "Select Crop",
                             choices = CROPS_CORRESPONDANCE, selected = 201),
                 fileInput("geofile", "Import Geojson",
@@ -82,12 +50,16 @@ ui = fluidPage(
   )
 
 
-server = function(input, output){
+server = function(input, output, session){
+  
+  session$userData$choice = tibble(name = c("Germany"), path = c(GERMANY))
   
   observe({
     req(input$geofile)
-    test <<- rgdal::readOGR(input$geofile$datapath)
-    print("OK")
+    new = tibble(name = input$geofile$name, path = input$geofile$datapath)
+    session$userData$choice = rbind(session$userData$choice, new)
+    corres = setNames(row_number(session$userData$choice$name), session$userData$choice$name)
+    updateRadioButtons(session, "mapChoice", choices = corres)
   })
   
   select_crop = reactive({
@@ -95,28 +67,36 @@ server = function(input, output){
     SCrop = input$CropSelect
     return(readRDS(DATA_FILE(SCrop)))
     })
+  
+  session$userData$flag = 0
+  observeEvent(input$map_shape_click, {session$userData$flag = 1})
+  observeEvent(input$map_draw_all_features, {session$userData$flag = 2})
 
   filter_Area = reactive({
     # create the data frame for te map
     # depend of the choices of the user
     polyid = input$map_shape_click[["id"]]
     feature = input$map_draw_all_features
-
-    if(!is.null(feature)&input$mapChoice == 0){
-      shape = create_feature(feature)
-    }else if(!is.null(polyid) & input$mapChoice == 1){
-      proxy = leafletProxy("map")
-      proxy %>% removeShape("selected")
+    proxy = leafletProxy("map")
+    proxy %>% removeShape("selected")
+    print(session$userData$flag)
+    if(session$userData$flag == 1){
+      polyid = input$map_shape_click[["id"]]
       if(polyid != "selected"){
-      shape = s[s$ID_1 == polyid,]
-      proxy %>% addPolygons(data = shape, layerId = "selected",
-                            fillColor = "yellow")
+        shape = session$userData$polyg[session$userData$polyg$ID_APP == polyid,]
+        proxy %>% addPolygons(data = shape, layerId = "selected",
+                              fillColor = "yellow")
       }else{
+        session$userData$flag = 0
         return(NULL)
-        }
-    } else{
+      }
+    }else if (session$userData$flag == 2){
+      
+      shape = create_feature(feature)
+    }else{
       return(NULL)
     }
+    
     
     info = select_crop()
     if(class(shape)[1] == "SpatialPoints"){
@@ -144,34 +124,31 @@ server = function(input, output){
     })
 
   output$map = renderLeaflet({
-    # Define the map
-    if(input$mapChoice == 0){
-      # Point mode
-      map = leaflet(germany) %>%
+    # load the geojson
+    dat = session$userData$choice[input$mapChoice,]
+    session$userData$polyg = sp::spTransform(rgdal::readOGR(dat$path), LEAFLET_CRS)
+    session$userData$polyg$ID_APP = 1:dim(session$userData$polyg@data)[1]
+      # Define the map
+      map = leaflet(session$userData$polyg) %>%
         addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
                     opacity = 1.0, fillOpacity = 0,
+                    layerId = session$userData$polyg$ID_APP,
                     highlightOptions = highlightOptions(color = "red", weight = 3,
                                                         bringToFront = TRUE)) %>% 
-        addDrawToolbar(
-          polylineOptions = FALSE,
-          circleOptions = FALSE,
-          rectangleOptions = FALSE,
-          circleMarkerOptions = FALSE,
-          polygonOptions = TRUE,
-          markerOptions = TRUE,
-          singleFeature = TRUE,
-          editOptions = editToolbarOptions(remove = FALSE)
-        )
-    }else{
-      # Zone mode
-      map = leaflet(s) %>%
-      addPolygons(color = "#4444EE", weight = 1, smoothFactor = 0.5,
-                  opacity = 1.0, fillOpacity = 0,
-                  layerId = s@data$ID_1,
-                  highlightOptions = highlightOptions(color = "red", weight = 3,
-                                                      bringToFront = TRUE))
-    }
-    return(map %>% addTiles())
+        addDrawToolbar( targetGroup = "created",
+                        polylineOptions = FALSE,
+                        circleOptions = FALSE,
+                        rectangleOptions = FALSE,
+                        circleMarkerOptions = FALSE,
+                        polygonOptions = TRUE,
+                        markerOptions = TRUE,
+                        singleFeature = TRUE,
+                        editOptions = editToolbarOptions(remove = FALSE)
+        ) %>% 
+        addTiles()
+      
+      session$userData$flag = 0
+    return(map)
   })
 }
 

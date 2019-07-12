@@ -183,3 +183,39 @@ create_feature = function(feature){
   # assign the WG84 projection
   return(sps)
 }
+
+build_DOY_graph = function(dat){
+  # create the Phenological graph from the data frame "dat"
+  # with 3 columns:
+  # "Date": class Date
+  # "sum_weight": between 0 and 1
+  # "P": phenological stage
+  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
+    geom_tile() +
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
+                   linetype = "Year"), size = 2)+
+    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
+                   linetype = "Month"))  +
+    labs(fill = "Phenology", alpha = "Probability") +
+    color_fill_custom +
+    scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
+    theme(axis.text.x=element_text(angle=30, hjust=1),
+          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
+  return(graph)
+}
+
+period_labelling = function(from, to){
+  # define the date break of the graph
+  # depending of the lenght of the time period
+  dif = ymd(to) - ymd(from)
+  label_period = case_when(
+    dif > 2100 ~ "1 month",
+    dif> 1800 ~ "4 week",
+    dif > 1000 ~ "3 week",
+    dif > 500 ~ "2 week",
+    dif > 200 ~ "1 week",
+    dif > 60 ~ "2 day",
+    TRUE ~ "1 day"
+  )
+  return(label_period)
+}
