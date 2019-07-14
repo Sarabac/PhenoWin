@@ -16,7 +16,8 @@ options(shiny.maxRequestSize=30*1024^2)
 
 shape_init = tibble(
   name = c("Germany", "Climat"),
-  path = c(GERMANY, SHP_FILE)
+  path = c(GERMANY, SHP_FILE),
+  Id_var = ""
 )
 
 choice4mapchoice = function(name){
@@ -60,12 +61,26 @@ server = function(input, output, session){
     # when the user upload a Geojson
     req(input$geofile)
     # add its path to the previous geojsons path
-    new = tibble(name = input$geofile$name, path = input$geofile$datapath)
+    new = tibble(name = input$geofile$name, path = input$geofile$datapath, Id_var = "")
     session$userData$choice = rbind(session$userData$choice, new)
     # generate the options for the Radiobuttons
     corres = choice4mapchoice(session$userData$choice$name)
     # Uptdate the radiobutton with the new options
     updateRadioButtons(session, "mapChoice", choices = corres)
+    idvar = colnames(rgdal::readOGR(new$path)@data)
+    choices = setNames( c(NA, idvar), c("Auto Generated", idvar))
+    showModal(modalDialog(
+      radioButtons("varchoice", "Choice of the variable",choices = choices),
+      footer = tagList(
+        actionButton("ok", "OK")))
+      )
+  })
+  observeEvent(input$ok,{
+    len = dim(session$userData$choice)[1]
+    session$userData$choice[len, "Id_var"] = input$varchoice
+    usertest <<- session$userData$choice
+    removeModal()
+    
   })
   
   select_crop = reactive({
@@ -82,27 +97,33 @@ server = function(input, output, session){
   filter_Area = reactive({
     # create the data frame for the graph
     
-    polyid = input$map_shape_click[["id"]] # do not move it: trigger the event
-    markerid = input$map_marker_click[["id"]]
+    polyclick = input$map_shape_click # do not move it: trigger the event
+    markerclick = input$map_marker_click
+    cinf <<- input$map_marker_click
     feature = input$map_draw_all_features  # do not move it: trigger the event
-    is_marker = class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")
+    is_marker <<- class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")
     proxy = leafletProxy("map")
     # if a yellow selection polygon have been created, it is erased
-    proxy %>% removeShape("selected") %>% removeMarker("selected")
+    proxy %>% clearGroup("Selected")
     
     if(session$userData$flag == 1){
       # when the user is clicking
-      shapeid = if_else(is_marker, markerid, polyid)
-      if(shapeid != "selected"){
+      if(is_marker){
+        shapeclick = markerclick
+      }else{
+        shapeclick = polyclick
+      }
+      if(shapeclick[["group"]] != "Selected"){
         # extract the clicked polygon
+        shapeid = shapeclick[["id"]]
         shape = session$userData$polyg[session$userData$polyg$ID_APP == shapeid,]
         if(is_marker){
-          proxy %>% addAwesomeMarkers(data = shape, layerId = "selected",
-                     icon = awesomeIcons(markerColor = "red"), group = "Geojson")
+          proxy %>% addAwesomeMarkers(data = shape, layerId = "S",
+                     icon = awesomeIcons(markerColor = "red"), group = "Selected")
         }else{
         # add a yellow polygon on top of it to show that it is selected
-        proxy %>% addPolygons(data = shape, layerId = "selected",
-                              fillColor = "red", group = "Geojson")
+        proxy %>% addPolygons(data = shape, layerId = shapeid,
+                              fillColor = "red", group = "Selected")
         }
       }else{
         # nothing happend if the user click on the already selected feature
@@ -118,7 +139,7 @@ server = function(input, output, session){
       # if session$userData$flag = 0
       return(NULL)
     }
-    
+    testmap <<-getMapData(proxy)
     info = select_crop()
     Pd = extract_velox(info[[1]], info[[2]], shape)
     return(cumsum_Pheno(Pd, digit = 2))
@@ -145,10 +166,17 @@ server = function(input, output, session){
   output$map = renderLeaflet({
     # load the geojson
     dat = session$userData$choice[input$mapChoice,]
+    print(dat)
     session$userData$polyg = sp::spTransform(rgdal::readOGR(dat$path, verbose = FALSE),
                                              LEAFLET_CRS)
     # create an ID column to select each polygon
-    session$userData$polyg$ID_APP = 1:dim(session$userData$polyg@data)[1]
+    if(dat$Id_var==""){
+      ID_APP = 1:dim(session$userData$polyg@data)[1]
+    }else{
+      ID_APP = pull(session$userData$polyg@data, dat$Id_var)
+    }
+    print(ID_APP)
+    session$userData$polyg$ID_APP = ID_APP
       # Define the map
       map = leaflet(session$userData$polyg) %>%
         addDrawToolbar( targetGroup = "created",
@@ -167,23 +195,28 @@ server = function(input, output, session){
         addProviderTiles("OpenTopoMap", group = "OpenTopoMap") %>%
         addLayersControl(
           baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-          overlayGroups = c("Geojson")
+          overlayGroups = c("Geojson", "Selected")
         )
       
       if (class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")){
         map = map %>% addAwesomeMarkers(icon = awesomeIcons(markerColor = "green"),
                                         layerId = session$userData$polyg$ID_APP,
+                                        label = as.character(session$userData$polyg$ID_APP),
+                                        labelOptions = labelOptions(noHide = T),
                                         group = "Geojson")
       }else{
         map = map %>% addPolygons(color = "green", weight = 1, smoothFactor = 0.5,
                             opacity = 1.0, fillOpacity = 0,
                             layerId = session$userData$polyg$ID_APP,
                             group = "Geojson",
+                            label = as.character(session$userData$polyg$ID_APP),
+                            labelOptions = labelOptions(noHide = T),
                             highlightOptions = highlightOptions(color = "red", weight = 3,
                                                                 bringToFront = TRUE))
       }
       
       session$userData$flag = 0
+      
     return(map)
   })
 }

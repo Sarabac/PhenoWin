@@ -1,6 +1,6 @@
 
 list.of.packages = c("tidyverse", "lubridate", "sp",
-                     "raster", "velox", "shiny", "leaflet", "scales")
+                     "raster", "velox", "shiny", "leaflet", "scales", "leaflet.extras", "rgdal")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){install.packages(new.packages)}
 

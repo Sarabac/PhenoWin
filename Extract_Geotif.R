@@ -1,6 +1,6 @@
 #W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
-#W.DIR = "/home/luxis/Dropbox/Kuhn/phenology/PhenoWin"
-W.DIR = "L:\\Lucas\\phenology\\PhenoWin"
+W.DIR = "/home/luxis/Dropbox/Kuhn/phenology/PhenoWin"
+#W.DIR = "L:\\Lucas\\phenology\\PhenoWin"
 setwd(W.DIR)
 
 source("Functions_Pheno.R")
@@ -9,7 +9,7 @@ library(tidyverse)
 library(lubridate)
 
 
-tif_info = extract_tif_info(RU.DIR)
+tif_info = extract_tif_info("//home//luxis//Dropbox//Kuhn//phenology//PhenoWin1//_DOY")
 crop_list = unique(tif_info$Crop)
 i = 0
 for (crop in crop_list){
