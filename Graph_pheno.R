@@ -52,19 +52,30 @@ ui = fluidPage(
   fluidRow(plotOutput("DOY_GRAPH"))
   )
 
+CreateLayerControl = function(map, name){
+  return(addLayersControl(map,
+    baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
+    overlayGroups = name,
+    options = layersControlOptions(collapsed = FALSE)
+  ))
+}
+
 Add_geojson = function(map, shape, name){
+  IDlayer = paste(name, shape$ID_APP, sep="_")
   if (class(shape)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")){
-    map = map %>% addAwesomeMarkers(icon = awesomeIcons(markerColor = "green"),
-                                    layerId = session$userData$polyg$ID_APP,
-                                    label = as.character(session$userData$polyg$ID_APP),
+    map = map %>% addAwesomeMarkers(data = shape,
+                                    icon = awesomeIcons(markerColor = "green"),
+                                    layerId = IDlayer,
+                                    label = as.character(shape$ID_APP),
                                     labelOptions = labelOptions(noHide = T),
-                                    group = "Geojson")
+                                    group = name)
   }else{
-    map = map %>% addPolygons(color = "green", weight = 1, smoothFactor = 0.5,
+    map = map %>% addPolygons(data = shape,
+                              color = "green", weight = 1, smoothFactor = 0.5,
                               opacity = 1.0, fillOpacity = 0,
-                              layerId = session$userData$polyg$ID_APP,
-                              group = "Geojson",
-                              label = as.character(session$userData$polyg$ID_APP),
+                              layerId = IDlayer,
+                              group = name,
+                              label = as.character(shape$ID_APP),
                               labelOptions = labelOptions(noHide = T),
                               highlightOptions = highlightOptions(color = "red", weight = 3,
                                                                   bringToFront = TRUE))
@@ -184,7 +195,7 @@ server = function(input, output, session){
 
   output$map = renderLeaflet({
     # load the geojson
-    dat = session$userData$choice[input$mapChoice,]
+    dat = session$userData$choice[1,]
     print(dat)
     session$userData$polyg = sp::spTransform(rgdal::readOGR(dat$path, verbose = FALSE),
                                              LEAFLET_CRS)
@@ -212,27 +223,11 @@ server = function(input, output, session){
         addTiles(group = "OpenStreetMap") %>%
         addProviderTiles("Esri.WorldImagery", group = "Orthos") %>%
         addProviderTiles("OpenTopoMap", group = "OpenTopoMap") %>%
-        addLayersControl(
-          baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-          overlayGroups = c("Geojson", "Selected")
-        )
-      
-      if (class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")){
-        map = map %>% addAwesomeMarkers(icon = awesomeIcons(markerColor = "green"),
-                                        layerId = session$userData$polyg$ID_APP,
-                                        label = as.character(session$userData$polyg$ID_APP),
-                                        labelOptions = labelOptions(noHide = T),
-                                        group = "Geojson")
-      }else{
-        map = map %>% addPolygons(color = "green", weight = 1, smoothFactor = 0.5,
-                            opacity = 1.0, fillOpacity = 0,
-                            layerId = session$userData$polyg$ID_APP,
-                            group = "Geojson",
-                            label = as.character(session$userData$polyg$ID_APP),
-                            labelOptions = labelOptions(noHide = T),
-                            highlightOptions = highlightOptions(color = "red", weight = 3,
-                                                                bringToFront = TRUE))
-      }
+        CreateLayerControl(dat$name)
+        
+        
+      map = Add_geojson(map,session$userData$polyg, dat$name )
+      #map = CreateLayerControl(map, c(dat$name))
       
       session$userData$flag = 0
       
