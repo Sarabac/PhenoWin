@@ -52,6 +52,25 @@ ui = fluidPage(
   fluidRow(plotOutput("DOY_GRAPH"))
   )
 
+Add_geojson = function(map, shape, name){
+  if (class(shape)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")){
+    map = map %>% addAwesomeMarkers(icon = awesomeIcons(markerColor = "green"),
+                                    layerId = session$userData$polyg$ID_APP,
+                                    label = as.character(session$userData$polyg$ID_APP),
+                                    labelOptions = labelOptions(noHide = T),
+                                    group = "Geojson")
+  }else{
+    map = map %>% addPolygons(color = "green", weight = 1, smoothFactor = 0.5,
+                              opacity = 1.0, fillOpacity = 0,
+                              layerId = session$userData$polyg$ID_APP,
+                              group = "Geojson",
+                              label = as.character(session$userData$polyg$ID_APP),
+                              labelOptions = labelOptions(noHide = T),
+                              highlightOptions = highlightOptions(color = "red", weight = 3,
+                                                                  bringToFront = TRUE))
+  }
+  return(map)
+}
 
 server = function(input, output, session){
   
