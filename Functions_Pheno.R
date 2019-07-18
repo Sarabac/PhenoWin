@@ -7,6 +7,7 @@ if(length(new.packages)){install.packages(new.packages)}
 # functions used to extract the data and build the graphs
 library(tidyverse)
 library(lubridate)
+library(leaflet.extras)
 
 # variables
 # variables
@@ -212,4 +213,25 @@ period_labelling = function(from, to){
     TRUE ~ "1 day"
   )
   return(label_period)
+}
+
+create_map = function(origin){
+  # origin is a shapefile which extent is the default
+  # map extent
+  map = leaflet(session$userData$polyg) %>%
+    addDrawToolbar( targetGroup = "created",
+                    polylineOptions = FALSE,
+                    circleOptions = FALSE,
+                    rectangleOptions = FALSE,
+                    circleMarkerOptions = FALSE,
+                    polygonOptions = TRUE,
+                    markerOptions = TRUE,
+                    singleFeature = TRUE,
+                    editOptions = editToolbarOptions(remove = FALSE)
+    ) %>% 
+    addSearchOSM() %>% addResetMapButton() %>%
+    addTiles(group = "OpenStreetMap") %>%
+    addProviderTiles("Esri.WorldImagery", group = "Orthos") %>%
+    addProviderTiles("OpenTopoMap", group = "OpenTopoMap")
+  return(map)
 }

@@ -178,21 +178,6 @@ server = function(input, output, session){
     print(ID_APP)
     session$userData$polyg$ID_APP = ID_APP
       # Define the map
-      map = leaflet(session$userData$polyg) %>%
-        addDrawToolbar( targetGroup = "created",
-                        polylineOptions = FALSE,
-                        circleOptions = FALSE,
-                        rectangleOptions = FALSE,
-                        circleMarkerOptions = FALSE,
-                        polygonOptions = TRUE,
-                        markerOptions = TRUE,
-                        singleFeature = TRUE,
-                        editOptions = editToolbarOptions(remove = FALSE)
-        ) %>% 
-        addSearchOSM() %>% addResetMapButton() %>%
-        addTiles(group = "OpenStreetMap") %>%
-        addProviderTiles("Esri.WorldImagery", group = "Orthos") %>%
-        addProviderTiles("OpenTopoMap", group = "OpenTopoMap") %>%
         addLayersControl(
           baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
           overlayGroups = c("Geojson", "Selected")
