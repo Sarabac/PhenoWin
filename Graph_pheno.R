@@ -41,7 +41,8 @@ ui = fluidPage(
                  fileInput("geofile", "Import Geojson",
                            accept = c(".geojson")),
                 selectInput("CropSelect", "Select Crop",
-                            choices = CROPS_CORRESPONDANCE, selected = 201)
+                            choices = CROPS_CORRESPONDANCE, selected = 201),
+                actionButton("compute", "Compute")
                 
            )),
   fluidRow(
@@ -92,62 +93,45 @@ server = function(input, output, session){
     SCrop = input$CropSelect
     return(readRDS(DATA_FILE(SCrop)))
     })
-  # the flag determins if the user is drawing or clicking on a polygon
-  session$userData$flag = 0
-  observeEvent(input$map_shape_click, {session$userData$flag = 1})
-  observeEvent(input$map_marker_click, {session$userData$flag = 1})
-  observeEvent(input$map_draw_all_features, {session$userData$flag = 2})
+  on_click = function(clickID){
+    print("OK")
+    if(is.null(clickID)){return(NULL)}
+    session$userData$shapes = session$userData$shapes %>% 
+      filter(!(name=="Selected"&Lid==clickID))
+    newSelected = session$userData$shapes %>% 
+      filter(Lid==clickID) %>% 
+      mutate(name="Selected", Lid=paste("Selected", Lid, sep="_"))
+    session$userData$shapes = rbind(
+      session$userData$shapes,
+      newSelected
+    )
+    testa <<- session$userData$shapes
+    return(NULL)
+  }
+  
+  observe({
+    on_click(input$map_shape_click[["id"]])
+    on_click(input$map_marker_click[["id"]])
+    print("Area")
+    leafletProxy("map") %>% clearGroup("Selected") %>% 
+      create_layer(filter(session$userData$shapes, name=="Selected"), color="Orange")
+    return(NULL)
+  })
 
-  filter_Area = reactive({
+  filter_Area = eventReactive(input$compute,{
     # create the data frame for the graph
+
     
-    polyclick = input$map_shape_click # do not move it: trigger the event
-    markerclick = input$map_marker_click
-    cinf <<- input$map_marker_click
-    feature = input$map_draw_all_features  # do not move it: trigger the event
-    is_marker <<- class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")
-    proxy = leafletProxy("map")
-    # if a yellow selection polygon have been created, it is erased
-    proxy %>% clearGroup("Selected")
+    selected = session$userData$shapes %>% filter(name=="Selected")
+    print(selected)
+    if(!nrow(selected)){return(NULL)}
     
-    if(session$userData$flag == 1){
-      # when the user is clicking
-      if(is_marker){
-        shapeclick = markerclick
-      }else{
-        shapeclick = polyclick
-      }
-      if(shapeclick[["group"]] != "Selected"){
-        # extract the clicked polygon
-        shapeid = shapeclick[["id"]]
-        shape = session$userData$polyg[session$userData$polyg$ID_APP == shapeid,]
-        if(is_marker){
-          proxy %>% addAwesomeMarkers(data = shape, layerId = "S",
-                     icon = awesomeIcons(markerColor = "red"), group = "Selected")
-        }else{
-        # add a yellow polygon on top of it to show that it is selected
-        proxy %>% addPolygons(data = shape, layerId = shapeid,
-                              fillColor = "red", group = "Selected")
-        }
-      }else{
-        # nothing happend if the user click on the already selected feature
-        session$userData$flag = 0
-        return(NULL)
-      }
-      
-    }else if (session$userData$flag == 2){
-      # when the user is drawing
-      shape = create_feature(feature)
-      
-    }else{
-      # if session$userData$flag = 0
-      return(NULL)
-    }
-    testmap <<-getMapData(proxy)
-    info = select_crop()
-    Pd = extract_velox(info[[1]], info[[2]], shape)
+    infos = select_crop()
+    Pd = extract_velox(infos[[1]], infos[[2]], selected)
+    testPd <<- Pd
+    print("ok")
     return(cumsum_Pheno(Pd, digit = 2))
-    
+   
   })
 
   output$DOY_GRAPH = renderPlot({
@@ -172,8 +156,6 @@ server = function(input, output, session){
     map = create_map() %>%
       create_layer(shapes) %>% 
       create_layerControl(unique(shapes$name))
-      
-      
     return(map)
   })
 }

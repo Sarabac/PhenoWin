@@ -76,16 +76,33 @@ extract_date = function(dat){
     mutate(Date = as.Date(paste(Year,"01-01",sep="-")) + days(DOY - 1))
 }
 
-extract_velox = function(infos, r, p){
-  # infos: data frame contaning  the crp, date, stage
+extract_velox = function(infos, r, sfObj){
+  # infos: data frame contaning  the crop, date, phase
   # r: velox object
-  # p: point
-  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
-  
-  if(class(p)[1]%in% c("SpatialPoints", "SpatialPointsDataFrame")){
-    v = r$extract_points(repro)
+  # sfObj: sf object
+  tinfos <<- infos
+  tr <<- r
+  tsfObj <<- sfObj
+  infos = infos %>% mutate(join=as.character(row_number()))
+  repro = sf::st_transform(sfObj, crs = r$crs)
+  point = repro %>% filter(is.point(geometry)) %>% mutate(RN=row_number())
+  polyg = repro %>% filter(!is.point(geometry))%>% mutate(RN=row_number())
+  PhenoDOY = tibble(DOY = numeric(), Area = character(), weight = numeric())
+  print("avant")
+  if(nrow(point)){
+    print("apres")
+    v = r$extract_points(point)
+    colnames(v) = infos$join
+    PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
+      gather("join", "DOY", -RN) %>%
+      inner_join(infos, by="join") %>% inner_join(point, by="RN") %>% 
+      select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1)
+      
+    return(PhenoDOY %>% extract_date())
+    print("finis")
+    verif <<- v
     # join the extracted values and the data frame
-    Pd = tibble(DOY = c(v), Area = 1, weight = 1) %>%
+    PhenoDOY =  tibble(DOY = c(v), Area = point$Lid, weight = 1) %>%
       cbind(infos)
   }else{ # if the object is a polygon
   v = r$extract(repro)[[1]]
@@ -157,7 +174,7 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
   return(sum_weight)
 }
 
-create_feature = function(feature){
+create_feature = function(feature){ #### maybe leaflet::derivePoints, leaflet::derivePolygons
   # extract the coordinate of points returned by leaflet
   co = feature[["features"]][[1]][["geometry"]][["coordinates"]]
   if(feature[["features"]][[1]][["geometry"]][["type"]] == "Polygon"){
@@ -187,6 +204,7 @@ build_DOY_graph = function(dat){
   # "P": phenological stage
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
     geom_tile() +
+    facet_grid(Area~Crop)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
                    linetype = "Year"), size = 2)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
@@ -214,9 +232,9 @@ period_labelling = function(from, to){
   )
   return(label_period)
 }
-
-is.point = function(x){class(x)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")}
-
+is.point = function(geometry){
+  sf::st_geometry_type(geometry) %in% c("POINT","MULTIPOINT")
+}
 create_map = function(){
   # origin is a shapefile which extent is the default
   # map extent
@@ -240,10 +258,8 @@ create_map = function(){
 
 create_layer = function(map, shape, color="green"){
   for(nam in unique(shape$name)){
-    point = shape %>% filter(nam==name&
-              sf::st_geometry_type(geometry) %in% c("POINT","MULTIPOINT" ))
-    polyg = shape %>% filter(nam==name&
-              sf::st_geometry_type(geometry) %in% c("POLYGON","MULTIPOLYGON"))
+    point <<- shape %>% filter(nam==name&is.point(geometry))
+    polyg = shape %>% filter(nam==name&!is.point(geometry))
     if (nrow(point)){
       map = map %>%
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
