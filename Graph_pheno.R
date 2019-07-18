@@ -14,11 +14,12 @@ library(lubridate)
 # to upload large geojson files
 options(shiny.maxRequestSize=30*1024^2)
 
-shape_init = tibble(
-  name = c("Germany", "Climat"),
-  path = c(GERMANY, SHP_FILE),
-  Id_var = ""
-)
+#shape_init = rbind(
+#  load4leaflet(SHP_FILE, "Climat"),
+#  load4leaflet(GERMANY, "Germany")
+#)
+
+shape_init = load4leaflet(GERMANY, "Germany")
 
 choice4mapchoice = function(name){
   setNames(1:length(name), name)
@@ -35,7 +36,7 @@ ui = fluidPage(
                   leafletOutput("map")),
           column(2,
                  radioButtons("mapChoice", "Polygons",
-                        choice4mapchoice(shape_init$name),
+                        choice4mapchoice(unique(shape_init$name)),
                         selected = 1),
                  fileInput("geofile", "Import Geojson",
                            accept = c(".geojson")),
@@ -55,20 +56,17 @@ ui = fluidPage(
 
 server = function(input, output, session){
   
-  session$userData$choice = shape_init # initial shapfiles
+  session$userData$shapes = shape_init
+  session$userData$currentGeo = list()
   
   observe({
     # when the user upload a Geojson
     req(input$geofile)
     # add its path to the previous geojsons path
-    new = tibble(name = input$geofile$name, path = input$geofile$datapath, Id_var = "")
-    session$userData$choice = rbind(session$userData$choice, new)
-    # generate the options for the Radiobuttons
-    corres = choice4mapchoice(session$userData$choice$name)
-    # Uptdate the radiobutton with the new options
-    updateRadioButtons(session, "mapChoice", choices = corres)
-    idvar = colnames(rgdal::readOGR(new$path)@data)
-    choices = setNames( c(NA, idvar), c("Auto Generated", idvar))
+    session$userData$currentGeo["name"] = input$geofile$name
+    session$userData$currentGeo["path"] = input$geofile$datapath
+    idvar = colnames(rgdal::readOGR(input$geofile$datapath)@data)
+    choices = setNames( c("", idvar), c("Auto Generated", idvar))
     showModal(modalDialog(
       radioButtons("varchoice", "Choice of the variable",choices = choices),
       footer = tagList(
@@ -76,9 +74,15 @@ server = function(input, output, session){
       )
   })
   observeEvent(input$ok,{
-    len = dim(session$userData$choice)[1]
-    session$userData$choice[len, "Id_var"] = input$varchoice
-    usertest <<- session$userData$choice
+    
+    infos = session$userData$currentGeo
+    newShape = load4leaflet(infos["path"], infos["name"], input$varchoice)
+    session$userData$shapes = rbind(
+      session$userData$shapes,
+      newShape
+    )
+    leafletProxy("map") %>% create_layer(newShape) %>%
+      create_layerControl(unique(session$userData$shapes$name))
     removeModal()
     
   })
@@ -164,43 +168,11 @@ server = function(input, output, session){
     })
 
   output$map = renderLeaflet({
-    # load the geojson
-    dat = session$userData$choice[input$mapChoice,]
-    print(dat)
-    session$userData$polyg = sp::spTransform(rgdal::readOGR(dat$path, verbose = FALSE),
-                                             LEAFLET_CRS)
-    # create an ID column to select each polygon
-    if(dat$Id_var==""){
-      ID_APP = 1:dim(session$userData$polyg@data)[1]
-    }else{
-      ID_APP = pull(session$userData$polyg@data, dat$Id_var)
-    }
-    print(ID_APP)
-    session$userData$polyg$ID_APP = ID_APP
-      # Define the map
-        addLayersControl(
-          baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-          overlayGroups = c("Geojson", "Selected")
-        )
+    shapes = session$userData$shapes
+    map = create_map() %>%
+      create_layer(shapes) %>% 
+      create_layerControl(unique(shapes$name))
       
-      if (class(session$userData$polyg)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")){
-        map = map %>% addAwesomeMarkers(icon = awesomeIcons(markerColor = "green"),
-                                        layerId = session$userData$polyg$ID_APP,
-                                        label = as.character(session$userData$polyg$ID_APP),
-                                        labelOptions = labelOptions(noHide = T),
-                                        group = "Geojson")
-      }else{
-        map = map %>% addPolygons(color = "green", weight = 1, smoothFactor = 0.5,
-                            opacity = 1.0, fillOpacity = 0,
-                            layerId = session$userData$polyg$ID_APP,
-                            group = "Geojson",
-                            label = as.character(session$userData$polyg$ID_APP),
-                            labelOptions = labelOptions(noHide = T),
-                            highlightOptions = highlightOptions(color = "red", weight = 3,
-                                                                bringToFront = TRUE))
-      }
-      
-      session$userData$flag = 0
       
     return(map)
   })

@@ -215,10 +215,12 @@ period_labelling = function(from, to){
   return(label_period)
 }
 
-create_map = function(origin){
+is.point = function(x){class(x)[1] %in% c("SpatialPoints", "SpatialPointsDataFrame")}
+
+create_map = function(){
   # origin is a shapefile which extent is the default
   # map extent
-  map = leaflet(session$userData$polyg) %>%
+  map = leaflet() %>%
     addDrawToolbar( targetGroup = "created",
                     polylineOptions = FALSE,
                     circleOptions = FALSE,
@@ -235,3 +237,54 @@ create_map = function(origin){
     addProviderTiles("OpenTopoMap", group = "OpenTopoMap")
   return(map)
 }
+
+create_layer = function(map, shape, color="green"){
+  for(nam in unique(shape$name)){
+    point = shape %>% filter(nam==name&
+              sf::st_geometry_type(geometry) %in% c("POINT","MULTIPOINT" ))
+    polyg = shape %>% filter(nam==name&
+              sf::st_geometry_type(geometry) %in% c("POLYGON","MULTIPOLYGON"))
+    if (nrow(point)){
+      map = map %>%
+        addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
+                          layerId = point$Lid,
+                          label = as.character(point$IDs),
+                          labelOptions = labelOptions(noHide = T),
+                          group = nam,
+                          data = point)
+    }
+    if (nrow(polyg)){
+      map = map %>% 
+        addPolygons(color = color, weight = 1, smoothFactor = 0.5,
+                    opacity = 1.0, fillOpacity = 0,
+                    layerId = polyg$Lid,
+                    group = nam,
+                    data = polyg,
+                    label = as.character(polyg$IDs),
+                    labelOptions = labelOptions(noHide = T),
+                    highlightOptions = highlightOptions(
+                      color = "red", weight = 3, bringToFront = TRUE))
+    }
+  }
+  return(map)
+}
+
+create_layerControl = function(map, groupNames = c()){
+  return(addLayersControl(map,
+    baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
+    overlayGroups =c(groupNames, c("Selected")),
+    options = layersControlOptions(collapsed = FALSE)
+  ))
+}
+
+load4leaflet = function(path, name, ID_var=""){
+  polyg <<- sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
+  ID_var <<-ID_var
+  if(ID_var==""){
+    result = transmute(polyg, IDs = row_number())
+  }else{
+    result = select(polyg, IDs = !!ID_var)
+  }
+  return(result %>%
+           mutate(name = name) %>% mutate(Lid = paste(name, IDs, sep="_")))
+  }
