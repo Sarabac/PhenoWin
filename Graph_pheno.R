@@ -122,10 +122,25 @@ server = function(input, output, session){
   #track click on the polygons or points
   observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
   observe({on_click(input$map_marker_click[["id"]])})  #for points
-  observe({
-    drawing <<- input$map_draw_all_features
-    leafletProxy("map") %>% removeDrawToolbar(clearFeatures = TRUE)
-    print(drawing)
+  observeEvent(input$map_draw_new_feature, {
+    print("New Feature")
+    drdd <<- input$map_draw_new_feature
+    newF <<- create_feature(drdd)
+    Ncustom = session$userData$shapes %>% 
+      filter(name=="Custom") %>% nrow()
+    print(Ncustom)
+    NewSF = tibble(
+      IDs = as.character(Ncustom+1),
+      geometry = newF,
+      name="Custom",
+      selected=TRUE
+    ) %>% mutate(Lid = paste(name, IDs, sep="_")) %>% 
+      sf::st_sf()
+    session$userData$shapes = NewSF %>% 
+      rbind(session$userData$shapes)
+    leafletProxy("map") %>% create_layer(NewSF)
+    shape <<- session$userData$shapes
+    on_click(NULL)
     
   })
   

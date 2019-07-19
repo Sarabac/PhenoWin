@@ -18,7 +18,7 @@ RU.DIR = "_DOY/" # DOY geotif file
 DATA_FOLDER = "_Data" # where the result of Extract_Pheno_Shapefile is stored
 DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 # Access the phenological data of the Crop "n", ready for the graph
-LEAFLET_CRS = sp::CRS("+proj=longlat +datum=WGS84")
+LEAFLET_CRS = sf::st_crs(4326)
 
 SELECTED = "Selected"
 SNAME = function(x){paste(SELECTED, x, sep="_")}
@@ -173,26 +173,24 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
   return(sum_weight)
 }
 
-create_feature = function(feature){ #### maybe leaflet::derivePoints, leaflet::derivePolygons
+create_feature = function(feature){
   # extract the coordinate of points returned by leaflet
-  co = feature[["features"]][[1]][["geometry"]][["coordinates"]]
-  if(feature[["features"]][[1]][["geometry"]][["type"]] == "Polygon"){
+  co = feature[["geometry"]][["coordinates"]]
+  if(feature[["geometry"]][["type"]] == "Polygon"){
     coor = co[[1]]
-    xy = tibble(x_coord = NA, y_coord = NA, .rows = length(coor))
+    xy = matrix(nrow = length(coor), ncol = 2)
     for(a in 1:length(coor)){
       for(b in 1:length(coor[[a]])){
         xy[a,b] = coor[[a]][[b]]
       }
     }
-    p = sp::Polygon(xy)
-    ps = sp::Polygons(list(p),1)
-    sps = sp::SpatialPolygons(list(ps), proj4string=LEAFLET_CRS)
+    sps = sf::st_polygon(list(xy))
   }else{
-    p = cbind(c(co[[1]]), c(co[[2]]))
-    sps = sp::SpatialPoints(p, proj4string=LEAFLET_CRS)
+    sps = sf::st_point(c(co[[1]],co[[2]]))
   }
+  geom_set = sf::st_sfc(sps, crs=LEAFLET_CRS)
   # assign the WG84 projection
-  return(sps)
+  return(geom_set)
 }
 
 build_DOY_graph = function(dat){
@@ -245,8 +243,7 @@ create_map = function(){
                     circleMarkerOptions = FALSE,
                     polygonOptions = TRUE,
                     markerOptions = TRUE,
-                    singleFeature = TRUE,
-                    editOptions = editToolbarOptions(remove = FALSE)
+                    singleFeature = TRUE
     ) %>% 
     addSearchOSM() %>% addResetMapButton() %>%
     addTiles(group = "OpenStreetMap") %>%
@@ -288,7 +285,7 @@ create_layer = function(map, shape, color="green"){
 create_layerControl = function(map, groupNames = c()){
   return(addLayersControl(map,
     baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-    overlayGroups =c(groupNames, c("Selected")),
+    overlayGroups =c(groupNames, c("Selected", "Custom")),
     options = layersControlOptions(collapsed = FALSE)
   ))
 }
