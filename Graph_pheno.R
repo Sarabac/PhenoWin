@@ -21,10 +21,6 @@ options(shiny.maxRequestSize=30*1024^2)
 
 shape_init = load4leaflet(GERMANY, "Germany")
 
-choice4mapchoice = function(name){
-  setNames(1:length(name), name)
-}
-
 # the minimal value of the time scale
 minDate = as.Date("1993-01-01")
 # the maximale value of the time scale
@@ -32,19 +28,13 @@ maxDate = as.Date(today() + years(1))
 
 # widgets of the shiny app
 ui = fluidPage(
-  fluidRow(column(10,
-                  leafletOutput("map")),
-          column(2,
-                 radioButtons("mapChoice", "Polygons",
-                        choice4mapchoice(unique(shape_init$name)),
-                        selected = 1),
-                 fileInput("geofile", "Import Geojson",
-                           accept = c(".geojson")),
-                selectInput("CropSelect", "Select Crop",
-                            choices = CROPS_CORRESPONDANCE, selected = 201),
-                actionButton("compute", "Compute")
-                
-           )),
+  fluidRow(
+    column(4, actionButton("compute", "Compute")),
+    column(4, selectInput("CropSelect", "Select Crop",
+                choices = CROPS_CORRESPONDANCE)),
+    column(4, fileInput("geofile", "Import Geojson",
+          accept = c(".geojson")))),
+  fluidRow(leafletOutput("map")),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
                          min = minDate,
@@ -61,31 +51,33 @@ server = function(input, output, session){
   session$userData$currentGeo = list()
   
   observe({
-    # when the user upload a Geojson
+    # when the user upload a Geojson file
     req(input$geofile)
-    # add its path to the previous geojsons path
+    # remember its path and name
     session$userData$currentGeo["name"] = input$geofile$name
     session$userData$currentGeo["path"] = input$geofile$datapath
-    idvar = colnames(rgdal::readOGR(input$geofile$datapath)@data)
+    #take the potential IDs for the layer. The user will choose one.
+    idvar = input$geofile$datapath %>% sf::read_sf() %>%
+      sf::st_drop_geometry() %>% colnames()
+    #There is also the possibility to create IDs based on row number
     choices = setNames( c("", idvar), c("Auto Generated", idvar))
     showModal(modalDialog(
-      radioButtons("varchoice", "Choice of the variable",choices = choices),
-      footer = tagList(
-        actionButton("ok", "OK")))
+      radioButtons("varchoice", "Choice of the variable", choices=choices),
+      footer = tagList(actionButton("ok", "OK")))
       )
   })
+  
   observeEvent(input$ok,{
-    
-    infos <<- session$userData$currentGeo
+    #When the choice of the IDs is made
+    infos = session$userData$currentGeo #retrive the file data
     newShape = load4leaflet(infos$path, infos$name, input$varchoice)
     session$userData$shapes = rbind(
       session$userData$shapes,
       newShape
-    )
+    )# add the shapes to the previous ones
     leafletProxy("map") %>% create_layer(newShape) %>%
       create_layerControl(unique(session$userData$shapes$name))
     removeModal()
-    
   })
   
   select_crop = reactive({
@@ -93,84 +85,74 @@ server = function(input, output, session){
     SCrop = input$CropSelect
     return(readRDS(DATA_FILE(SCrop)))
     })
+  
   on_click = function(clickID){
-    clickID<<-clickID
-    shapes<<-session$userData$shapes
-    print(paste("click", clickID))
-    SelectChanges = tibble(removed=character(), added=character())
-    if(is.null(clickID)){return(SelectChanges)} #no click -> do nothing
+    # general function when a feature is clicked
+    if(is.null(clickID)){return(NULL)} #no click -> do nothing
     already_there = session$userData$shapes %>% 
       filter(name=="Selected"&Lid==clickID)
     if(nrow(already_there)){#if already selected -> remove from selection
       session$userData$shapes = session$userData$shapes %>% 
         filter(!(name=="Selected"&Lid==clickID))
-      SelectChanges = add_row(SelectChanges, removed=clickID)
     }else{#if not selected -> add to selection
       session$userData$shapes = session$userData$shapes %>% 
         filter(Lid==clickID)%>% 
         mutate(name="Selected", Lid=paste("Selected", Lid, sep="_")) %>% 
         rbind(session$userData$shapes)
-      SelectChanges = add_row(SelectChanges, added=clickID)
     }
     # if the click is too fast it create doubles, we remove it
     session$userData$shapes = session$userData$shapes %>% 
       group_by(Lid) %>% filter(row_number()==1) %>% ungroup()
-    return(SelectChanges)
   }
   
-  observe({#track click on the shapes or markers
-    on_click(input$map_shape_click[["id"]])
-    on_click(input$map_marker_click[["id"]])
+  observe({   #track click on the polygons or points
+    on_click(input$map_shape_click[["id"]])   #for polygons
+    on_click(input$map_marker_click[["id"]])  #for points
     leafletProxy("map") %>%
       clearGroup("Selected") %>% 
       create_layer(
         filter(session$userData$shapes,name=="Selected"),
-        color="red")
-      #removeShape(SelectChanges$removed) %>%
-      #removeMarker(SelectChanges$removed) %>%
-      #create_layer(filter(session$userData$shapes,
-       # Lid%in%SelectChanges$added), color="red")
-    return(NULL)
+        color="red"
+        )
   })
 
-  filter_Area = eventReactive(input$compute,{
+  Build_Dataset = eventReactive(input$compute,{
     # create the data frame for the graph
 
-    
+    #take all the selected features
     selected = session$userData$shapes %>% filter(name=="Selected")
     print(selected)
-    if(!nrow(selected)){return(NULL)}
+    if(!nrow(selected)){return(NULL)}#stop if nothing is selected
     
-    infos = select_crop()
+    infos = select_crop()# the reactive function above
+    #info[[1]] about the layer (Crop, Year, Phase)
+    #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    testPd <<- Pd
-    print("ok")
     return(cumsum_Pheno(Pd, digit = 2))
-   
   })
 
   output$DOY_GRAPH = renderPlot({
     # Draw the graph
-    dat = filter_Area()
-    if(!is.null(dat)){
-      from = input$DatesMerge[1]
-      to = input$DatesMerge[2]
-      label_period = period_labelling(from,to)
-      # name of the selected area
-      
-      graph =dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>%
-         build_DOY_graph() +
-        scale_x_date(name="DOY", date_breaks=label_period,
-                     labels=scales::date_format("%j"),
-                     sec.axis=dup_axis(
-                       name="Date",labels = scales::date_format("%d %b %Y")
-                       ))
-      return(graph)
-    }
+    dat = Build_Dataset()
+    if(is.null(dat)){return(NULL)}
+    from = input$DatesMerge[1]
+    to = input$DatesMerge[2]
+    label_period = period_labelling(from,to)
+    
+    graph = dat %>%
+      filter(Date > as.Date(from) & Date < as.Date(to)) %>%
+      build_DOY_graph() +
+      scale_x_date(name="DOY", date_breaks=label_period,
+                   labels=scales::date_format("%j"),
+                   sec.axis=dup_axis(
+                     name="Date",labels = scales::date_format("%d %b %Y")
+                     ))
+    return(graph)
     })
 
   output$map = renderLeaflet({
-    shapes = session$userData$shapes
+    #initialize the map
+    shapes = session$userData$shapes # the initial polygones
     map = create_map() %>%
       create_layer(shapes) %>% 
       create_layerControl(unique(shapes$name))
