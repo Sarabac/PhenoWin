@@ -76,8 +76,8 @@ server = function(input, output, session){
   })
   observeEvent(input$ok,{
     
-    infos = session$userData$currentGeo
-    newShape = load4leaflet(infos["path"], infos["name"], input$varchoice)
+    infos <<- session$userData$currentGeo
+    newShape = load4leaflet(infos$path, infos$name, input$varchoice)
     session$userData$shapes = rbind(
       session$userData$shapes,
       newShape
@@ -94,27 +94,42 @@ server = function(input, output, session){
     return(readRDS(DATA_FILE(SCrop)))
     })
   on_click = function(clickID){
-    print("OK")
-    if(is.null(clickID)){return(NULL)}
+    clickID<<-clickID
+    shapes<<-session$userData$shapes
+    print(paste("click", clickID))
+    SelectChanges = tibble(removed=character(), added=character())
+    if(is.null(clickID)){return(SelectChanges)} #no click -> do nothing
+    already_there = session$userData$shapes %>% 
+      filter(name=="Selected"&Lid==clickID)
+    if(nrow(already_there)){#if already selected -> remove from selection
+      session$userData$shapes = session$userData$shapes %>% 
+        filter(!(name=="Selected"&Lid==clickID))
+      SelectChanges = add_row(SelectChanges, removed=clickID)
+    }else{#if not selected -> add to selection
+      session$userData$shapes = session$userData$shapes %>% 
+        filter(Lid==clickID)%>% 
+        mutate(name="Selected", Lid=paste("Selected", Lid, sep="_")) %>% 
+        rbind(session$userData$shapes)
+      SelectChanges = add_row(SelectChanges, added=clickID)
+    }
+    # if the click is too fast it create doubles, we remove it
     session$userData$shapes = session$userData$shapes %>% 
-      filter(!(name=="Selected"&Lid==clickID))
-    newSelected = session$userData$shapes %>% 
-      filter(Lid==clickID) %>% 
-      mutate(name="Selected", Lid=paste("Selected", Lid, sep="_"))
-    session$userData$shapes = rbind(
-      session$userData$shapes,
-      newSelected
-    )
-    testa <<- session$userData$shapes
-    return(NULL)
+      group_by(Lid) %>% filter(row_number()==1) %>% ungroup()
+    return(SelectChanges)
   }
   
-  observe({
+  observe({#track click on the shapes or markers
     on_click(input$map_shape_click[["id"]])
     on_click(input$map_marker_click[["id"]])
-    print("Area")
-    leafletProxy("map") %>% clearGroup("Selected") %>% 
-      create_layer(filter(session$userData$shapes, name=="Selected"), color="Orange")
+    leafletProxy("map") %>%
+      clearGroup("Selected") %>% 
+      create_layer(
+        filter(session$userData$shapes,name=="Selected"),
+        color="red")
+      #removeShape(SelectChanges$removed) %>%
+      #removeMarker(SelectChanges$removed) %>%
+      #create_layer(filter(session$userData$shapes,
+       # Lid%in%SelectChanges$added), color="red")
     return(NULL)
   })
 
@@ -145,8 +160,11 @@ server = function(input, output, session){
       
       graph =dat %>% filter(Date > as.Date(from) & Date < as.Date(to)) %>%
          build_DOY_graph() +
-        scale_x_date(name="DOY", date_breaks=label_period, labels=scales::date_format("%j"),
-                     sec.axis=dup_axis(name="Date", labels = scales::date_format("%d %b %Y")))
+        scale_x_date(name="DOY", date_breaks=label_period,
+                     labels=scales::date_format("%j"),
+                     sec.axis=dup_axis(
+                       name="Date",labels = scales::date_format("%d %b %Y")
+                       ))
       return(graph)
     }
     })
@@ -162,3 +180,5 @@ server = function(input, output, session){
 
 #Launch the Shiny app
 shinyApp(ui = ui, server = server)
+
+

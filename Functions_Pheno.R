@@ -87,7 +87,8 @@ extract_velox = function(infos, r, sfObj){
   repro = sf::st_transform(sfObj, crs = r$crs)
   point = repro %>% filter(is.point(geometry)) %>% mutate(RN=row_number())
   polyg = repro %>% filter(!is.point(geometry))%>% mutate(RN=row_number())
-  PhenoDOY = tibble(DOY = numeric(), Area = character(), weight = numeric())
+  PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
+                    DOY = numeric(), weight = numeric())
   print("avant")
   if(nrow(point)){
     print("apres")
@@ -95,33 +96,28 @@ extract_velox = function(infos, r, sfObj){
     colnames(v) = infos$join
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
       gather("join", "DOY", -RN) %>%
-      inner_join(infos, by="join") %>% inner_join(point, by="RN") %>% 
-      select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1)
-      
-    return(PhenoDOY %>% extract_date())
-    print("finis")
-    verif <<- v
-    # join the extracted values and the data frame
-    PhenoDOY =  tibble(DOY = c(v), Area = point$Lid, weight = 1) %>%
-      cbind(infos)
-  }else{ # if the object is a polygon
-  v = r$extract(repro)[[1]]
-  join = 1:dim(v)[[2]]
-  # create an index column to join the pixels
-  # and their infos
-  colnames(v) = join
-  infos$join = as.character(join)
-  Pd = as_tibble(v) %>% gather("join", "DOY") %>%
+      inner_join(infos, by="join") %>%
+      inner_join(sf::st_drop_geometry(point), by="RN") %>% 
+      select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
+      bind_rows(PhenoDOY)
+  }
+  if (nrow(polyg)){ # if the object is a polygon
+  v = r$extract(polyg, df=TRUE)
+  colnames(v) = c("RN", infos$join)
+  PhenoDOY = as_tibble(v) %>%
+    gather("join", "DOY", -RN) %>%
     inner_join(infos, by="join") %>%
-    group_by(P, Year, Crop) %>%
+    inner_join(sf::st_drop_geometry(polyg), by="RN") %>% 
+    select(DOY, Area=Lid, Crop, P, Year) %>%
+    group_by(Area, Crop, P, Year) %>%
     mutate(DOY = round(DOY), weight = 1/n()) %>% 
-    group_by(P, Year, Crop, DOY) %>%
+    group_by(Area, Crop, P, Year, DOY) %>%
     # calculate the proportion of each DOY
     # in the polygon
     summarise(weight = sum(weight)) %>% 
-    mutate(Area = 1)
+    bind_rows(PhenoDOY)
   }
-  return(Pd %>% drop_na() %>% extract_date())
+  return(PhenoDOY %>% drop_na() %>% extract_date())
 }
 
 
@@ -257,6 +253,7 @@ create_map = function(){
 }
 
 create_layer = function(map, shape, color="green"){
+  if(!nrow(shape)){return(map)} # no change if nothing to add
   for(nam in unique(shape$name)){
     point <<- shape %>% filter(nam==name&is.point(geometry))
     polyg = shape %>% filter(nam==name&!is.point(geometry))
