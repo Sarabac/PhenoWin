@@ -28,11 +28,20 @@ maxDate = as.Date(today() + years(1))
 
 # widgets of the shiny app
 ui = fluidPage(
+  tags$head(# css styles
+    tags$style(HTML("
+      #compute{background-color:GreenYellow }
+      *{font: bold 12px/30px Arial, serif}
+      "))
+  ),
   fluidRow(
-    column(4, actionButton("compute", "Compute")),
-    column(4, selectInput("CropSelect", "Select Crop",
+    column(4,
+           actionButton("compute", "Compute", icon = icon("play")),
+           actionButton("selectAll", "Select All"),
+           actionButton("deselectAll", "Deselect All")),
+    column(2, selectInput("CropSelect", "Select Crop",
                 choices = CROPS_CORRESPONDANCE)),
-    column(4, fileInput("geofile", "Import Geojson",
+    column(2, fileInput("geofile", "Import Geojson",
           accept = c(".geojson")))),
   fluidRow(leafletOutput("map")),
   fluidRow(
@@ -70,7 +79,9 @@ server = function(input, output, session){
   observeEvent(input$ok,{
     #When the choice of the IDs is made
     infos = session$userData$currentGeo #retrive the file data
-    newShape = load4leaflet(infos$path, infos$name, input$varchoice)
+    newShape = load4leaflet(infos$path,
+                            str_remove(infos$name, "\\..*$"),
+                            input$varchoice)
     session$userData$shapes = rbind(
       session$userData$shapes,
       newShape
@@ -88,39 +99,55 @@ server = function(input, output, session){
   
   on_click = function(clickID){
     # general function when a feature is clicked
-    if(is.null(clickID)){return(NULL)} #no click -> do nothing
-    already_there = session$userData$shapes %>% 
-      filter(name=="Selected"&Lid==clickID)
-    if(nrow(already_there)){#if already selected -> remove from selection
+    if(!is.null(clickID)){
+      #ClickID can be format Selected_Lid or just Lid
+      #str_detect is apply to check which Lid match
       session$userData$shapes = session$userData$shapes %>% 
-        filter(!(name=="Selected"&Lid==clickID))
-    }else{#if not selected -> add to selection
-      session$userData$shapes = session$userData$shapes %>% 
-        filter(Lid==clickID)%>% 
-        mutate(name="Selected", Lid=paste("Selected", Lid, sep="_")) %>% 
-        rbind(session$userData$shapes)
+        mutate(selected = xor(selected,#reverse selection if id detected
+          sapply(Lid, function(ID){#apply on each row
+            any(str_detect(clickID, paste(ID,"$",sep="")))
+          }))
+        )
     }
-    # if the click is too fast it create doubles, we remove it
-    session$userData$shapes = session$userData$shapes %>% 
-      group_by(Lid) %>% filter(row_number()==1) %>% ungroup()
-  }
-  
-  observe({   #track click on the polygons or points
-    on_click(input$map_shape_click[["id"]])   #for polygons
-    on_click(input$map_marker_click[["id"]])  #for points
+    #print(shape2)
+    #modifie the map according to the changes
+    selectedFeatures <<- session$userData$shapes %>% 
+      filter(selected) %>%
+      mutate(name="Selected", Lid=paste("Selected", Lid, sep="_"))
     leafletProxy("map") %>%
       clearGroup("Selected") %>% 
-      create_layer(
-        filter(session$userData$shapes,name=="Selected"),
-        color="red"
-        )
+      create_layer(selectedFeatures, color="red")
+  }
+  
+  #track click on the polygons or points
+  observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
+  observe({on_click(input$map_marker_click[["id"]])})  #for points
+  observe({
+    drawing <<- input$map_draw_all_features
+    leafletProxy("map") %>% removeDrawToolbar(clearFeatures = TRUE)
+    print(drawing)
+    
   })
+  
+  observeEvent(input$deselectAll,{
+    # select all features
+    session$userData$shapes = session$userData$shapes %>%
+      mutate(selected = FALSE)
+    on_click(NULL) # update the map
+  })
+  observeEvent(input$selectAll,{
+    # deselect all features
+    session$userData$shapes = session$userData$shapes %>%
+      mutate(selected = TRUE)
+    on_click(NULL) # update the map
+  })
+  
 
   Build_Dataset = eventReactive(input$compute,{
     # create the data frame for the graph
 
     #take all the selected features
-    selected = session$userData$shapes %>% filter(name=="Selected")
+    selected = session$userData$shapes %>% filter(selected)
     print(selected)
     if(!nrow(selected)){return(NULL)}#stop if nothing is selected
     

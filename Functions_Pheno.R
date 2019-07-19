@@ -20,6 +20,9 @@ DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 # Access the phenological data of the Crop "n", ready for the graph
 LEAFLET_CRS = sp::CRS("+proj=longlat +datum=WGS84")
 
+SELECTED = "Selected"
+SNAME = function(x){paste(SELECTED, x, sep="_")}
+
 ### Colors corresponding to each phenological stage
 CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
 col.p <- c("#FFFE89", #5
@@ -299,5 +302,6 @@ load4leaflet = function(path, name, ID_var=""){
     result = select(polyg, IDs = !!ID_var)
   }
   return(result %>%
-           mutate(name = name) %>% mutate(Lid = paste(name, IDs, sep="_")))
+           mutate(name = name, selected = FALSE) %>%
+           mutate(Lid = paste(name, IDs, sep="_")))
   }
