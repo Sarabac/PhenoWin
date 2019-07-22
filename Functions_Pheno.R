@@ -1,12 +1,13 @@
 
 list.of.packages = c("tidyverse", "lubridate", "sp",
-                     "raster", "velox", "shiny", "leaflet", "scales")
+                     "raster", "velox", "shiny", "leaflet", "scales", "leaflet.extras", "rgdal")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){install.packages(new.packages)}
 
 # functions used to extract the data and build the graphs
 library(tidyverse)
 library(lubridate)
+library(leaflet.extras)
 
 # variables
 # variables
@@ -17,7 +18,10 @@ RU.DIR = "_DOY/" # DOY geotif file
 DATA_FOLDER = "_Data" # where the result of Extract_Pheno_Shapefile is stored
 DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 # Access the phenological data of the Crop "n", ready for the graph
-LEAFLET_CRS = sp::CRS("+proj=longlat +datum=WGS84")
+LEAFLET_CRS = sf::st_crs(4326)
+
+SELECTED = "Selected"
+SNAME = function(x){paste(SELECTED, x, sep="_")}
 
 ### Colors corresponding to each phenological stage
 CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
@@ -75,35 +79,51 @@ extract_date = function(dat){
     mutate(Date = as.Date(paste(Year,"01-01",sep="-")) + days(DOY - 1))
 }
 
-extract_velox = function(infos, r, p){
-  # infos: data frame contaning  the crp, date, stage
+extract_velox = function(infos, r, sfObj){
+  # infos: data frame contaning  the crop, date, phase
   # r: velox object
-  # p: point
-  repro = sp::spTransform(p, CRSobj = sp::CRS(r$crs, TRUE))
-  
-  if(class(p)[1]%in% c("SpatialPoints", "SpatialPointsDataFrame")){
-    v = r$extract_points(repro)
-    # join the extracted values and the data frame
-    Pd = tibble(DOY = c(v), Area = 1, weight = 1) %>%
-      cbind(infos)
-  }else{ # if the object is a polygon
-  v = r$extract(repro)[[1]]
-  join = 1:dim(v)[[2]]
-  # create an index column to join the pixels
-  # and their infos
-  colnames(v) = join
-  infos$join = as.character(join)
-  Pd = as_tibble(v) %>% gather("join", "DOY") %>%
+  # sfObj: sf object
+  tinfos <<- infos
+  tr <<- r
+  tsfObj <<- sfObj
+  infos = infos %>% mutate(join=as.character(row_number()))
+  repro = sf::st_transform(sfObj, crs = r$crs)
+  point = repro %>% filter(is.point(geometry)) %>%
+    mutate(RN=row_number())
+  polyg = repro %>% filter(!is.point(geometry)) %>%
+    mutate(RN=row_number()) %>%
+    sf::st_cast("MULTIPOLYGON")# for homogenous geometry classes
+  PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
+                    DOY = numeric(), weight = numeric())
+  print("avant")
+  if(nrow(point)){
+    print("apres")
+    v = r$extract_points(point)
+    colnames(v) = infos$join
+    PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
+      gather("join", "DOY", -RN) %>%
+      inner_join(infos, by="join") %>%
+      inner_join(sf::st_drop_geometry(point), by="RN") %>% 
+      select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
+      bind_rows(PhenoDOY)
+  }
+  if (nrow(polyg)){
+  v = r$extract(polyg, df=TRUE)
+  colnames(v) = c("RN", infos$join) # first column is polygone ID
+  PhenoDOY = as_tibble(v) %>%
+    gather("join", "DOY", -RN) %>%
     inner_join(infos, by="join") %>%
-    group_by(P, Year, Crop) %>%
+    inner_join(sf::st_drop_geometry(polyg), by="RN") %>% 
+    select(DOY, Area=Lid, Crop, P, Year) %>%
+    group_by(Area, Crop, P, Year) %>%
     mutate(DOY = round(DOY), weight = 1/n()) %>% 
-    group_by(P, Year, Crop, DOY) %>%
+    group_by(Area, Crop, P, Year, DOY) %>%
     # calculate the proportion of each DOY
     # in the polygon
     summarise(weight = sum(weight)) %>% 
-    mutate(Area = 1)
+    bind_rows(PhenoDOY)
   }
-  return(Pd %>% drop_na() %>% extract_date())
+  return(PhenoDOY %>% drop_na() %>% extract_date())
 }
 
 
@@ -158,27 +178,26 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
 
 create_feature = function(feature){
   # extract the coordinate of points returned by leaflet
-  co = feature[["features"]][[1]][["geometry"]][["coordinates"]]
-  if(feature[["features"]][[1]][["geometry"]][["type"]] == "Polygon"){
+  co = feature[["geometry"]][["coordinates"]]
+  if(feature[["geometry"]][["type"]] == "Polygon"){
     coor = co[[1]]
-    xy = tibble(x_coord = NA, y_coord = NA, .rows = length(coor))
+    xy = matrix(nrow = length(coor), ncol = 2)
     for(a in 1:length(coor)){
       for(b in 1:length(coor[[a]])){
         xy[a,b] = coor[[a]][[b]]
       }
     }
-    p = sp::Polygon(xy)
-    ps = sp::Polygons(list(p),1)
-    sps = sp::SpatialPolygons(list(ps), proj4string=LEAFLET_CRS)
+    sps = sf::st_polygon(list(xy))
   }else{
-    p = cbind(c(co[[1]]), c(co[[2]]))
-    sps = sp::SpatialPoints(p, proj4string=LEAFLET_CRS)
+    sps = sf::st_point(c(co[[1]],co[[2]]))
   }
+  geom_set = sf::st_sfc(sps, crs=LEAFLET_CRS)
   # assign the WG84 projection
-  return(sps)
+  return(geom_set)
 }
 
-build_DOY_graph = function(dat){
+build_DOY_graph = function(dat, date_breaks=waiver(),
+                           user_facet=facet_grid(Area~Crop)){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:
   # "Date": class Date
@@ -186,12 +205,16 @@ build_DOY_graph = function(dat){
   # "P": phenological stage
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
     geom_tile() +
+    user_facet+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
                    linetype = "Year"), size = 2)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
                    linetype = "Month"))  +
     labs(fill = "Phenology", alpha = "Probability") +
     color_fill_custom +
+    scale_x_date(name="DOY", date_breaks=date_breaks,
+                 labels=scales::date_format("%j"),
+                 sec.axis=dup_axis(name="Date",labels = scales::date_format("%d %b %Y"))) +
     scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
     theme(axis.text.x=element_text(angle=30, hjust=1),
           axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
@@ -213,3 +236,76 @@ period_labelling = function(from, to){
   )
   return(label_period)
 }
+is.point = function(geometry){
+  sf::st_geometry_type(geometry) %in% c("POINT","MULTIPOINT")
+}
+create_map = function(){
+  # origin is a shapefile which extent is the default
+  # map extent
+  map = leaflet() %>%
+    addDrawToolbar( targetGroup = "created",
+                    polylineOptions = FALSE,
+                    circleOptions = FALSE,
+                    rectangleOptions = FALSE,
+                    circleMarkerOptions = FALSE,
+                    polygonOptions = TRUE,
+                    markerOptions = TRUE,
+                    singleFeature = TRUE
+    ) %>% 
+    addSearchOSM() %>% addResetMapButton() %>%
+    addTiles(group = "OpenStreetMap") %>%
+    addProviderTiles("Esri.WorldImagery", group = "Orthos") %>%
+    addProviderTiles("OpenTopoMap", group = "OpenTopoMap")
+  return(map)
+}
+
+create_layer = function(map, shape, color="green"){
+  if(!nrow(shape)){return(map)} # no change if nothing to add
+  for(nam in unique(shape$name)){
+    point <<- shape %>% filter(nam==name&is.point(geometry))
+    polyg = shape %>% filter(nam==name&!is.point(geometry))
+    if (nrow(point)){
+      map = map %>%
+        addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
+                          layerId = point$Lid,
+                          label = as.character(point$IDs),
+                          labelOptions = labelOptions(noHide = T),
+                          group = nam,
+                          data = point)
+    }
+    if (nrow(polyg)){
+      map = map %>% 
+        addPolygons(color = color, weight = 1, smoothFactor = 0.5,
+                    opacity = 1.0, fillOpacity = 0,
+                    layerId = polyg$Lid,
+                    group = nam,
+                    data = polyg,
+                    label = as.character(polyg$IDs),
+                    labelOptions = labelOptions(noHide = T),
+                    highlightOptions = highlightOptions(
+                      color = "red", weight = 3, bringToFront = TRUE))
+    }
+  }
+  return(map)
+}
+
+create_layerControl = function(map, groupNames = c()){
+  return(addLayersControl(map,
+    baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
+    overlayGroups =c(groupNames, c("Selected", "Custom")),
+    options = layersControlOptions(collapsed = FALSE)
+  ))
+}
+
+load4leaflet = function(path, name, ID_var=""){
+  polyg <<- sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
+  ID_var <<-ID_var
+  if(ID_var==""){
+    result = transmute(polyg, IDs = row_number())
+  }else{
+    result = select(polyg, IDs = !!ID_var)
+  }
+  return(result %>%
+           mutate(name = name, selected = FALSE) %>%
+           mutate(Lid = paste(name, IDs, sep="_")))
+  }
