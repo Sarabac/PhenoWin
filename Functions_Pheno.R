@@ -88,8 +88,11 @@ extract_velox = function(infos, r, sfObj){
   tsfObj <<- sfObj
   infos = infos %>% mutate(join=as.character(row_number()))
   repro = sf::st_transform(sfObj, crs = r$crs)
-  point = repro %>% filter(is.point(geometry)) %>% mutate(RN=row_number())
-  polyg = repro %>% filter(!is.point(geometry))%>% mutate(RN=row_number())
+  point = repro %>% filter(is.point(geometry)) %>%
+    mutate(RN=row_number())
+  polyg = repro %>% filter(!is.point(geometry)) %>%
+    mutate(RN=row_number()) %>%
+    sf::st_cast("MULTIPOLYGON")# for homogenous geometry classes
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
   print("avant")
@@ -104,9 +107,9 @@ extract_velox = function(infos, r, sfObj){
       select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
       bind_rows(PhenoDOY)
   }
-  if (nrow(polyg)){ # if the object is a polygon
+  if (nrow(polyg)){
   v = r$extract(polyg, df=TRUE)
-  colnames(v) = c("RN", infos$join)
+  colnames(v) = c("RN", infos$join) # first column is polygone ID
   PhenoDOY = as_tibble(v) %>%
     gather("join", "DOY", -RN) %>%
     inner_join(infos, by="join") %>%
