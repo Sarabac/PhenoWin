@@ -99,14 +99,11 @@ server = function(input, output, session){
   on_click = function(clickID){
     # general function when a feature is clicked
     if(is.null(clickID)){return(NULL)}
-    Clid <<-clickID
     shapeChanged = session$userData$shapes %>%
       mutate(different = Lid%in%clickID) %>% 
       mutate(selected = xor(selected, different))
     #reverse selection if id detected
     session$userData$shapes = select(shapeChanged, -different)
-    ch <<- shapeChanged
-    usr <<- session$userData$shapes
     leafletProxy("map") %>%
       create_layer(filter(shapeChanged, different))
     }
@@ -115,12 +112,11 @@ server = function(input, output, session){
   observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
   observe({on_click(input$map_marker_click[["id"]])})  #for points
   observeEvent(input$map_draw_new_feature, {
-    print("New Feature")
-    drdd <<- input$map_draw_new_feature
-    newF <<- create_feature(drdd)
+    #determin how many features already exist
     Ncustom = session$userData$shapes %>% 
       filter(name=="Custom") %>% nrow()
     print(Ncustom)
+    #create the new feature
     NewSF = tibble(
       IDs = as.character(Ncustom+1),
       geometry = newF,
@@ -128,9 +124,12 @@ server = function(input, output, session){
       selected=TRUE
     ) %>% mutate(Lid = paste(name, IDs, sep="_")) %>% 
       sf::st_sf()
+    #add tto the user list
     session$userData$shapes = NewSF %>% 
       rbind(session$userData$shapes)
-    leafletProxy("map") %>% create_layer(NewSF)
+    #add to the map
+    leafletProxy("map") %>% create_layer(NewSF) %>%
+      create_layerControl(unique(session$userData$shapes$name))
     
   })
   

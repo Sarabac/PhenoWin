@@ -83,9 +83,6 @@ extract_velox = function(infos, r, sfObj){
   # infos: data frame contaning  the crop, date, phase
   # r: velox object
   # sfObj: sf object
-  tinfos <<- infos
-  tr <<- r
-  tsfObj <<- sfObj
   infos = infos %>% mutate(join=as.character(row_number()))
   repro = sf::st_transform(sfObj, crs = r$crs)
   point = repro %>% filter(is.point(geometry)) %>%
@@ -95,9 +92,7 @@ extract_velox = function(infos, r, sfObj){
     sf::st_cast("MULTIPOLYGON")# for homogenous geometry classes
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
-  print("avant")
   if(nrow(point)){
-    print("apres")
     v = r$extract_points(point)
     colnames(v) = infos$join
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
@@ -292,14 +287,14 @@ create_layer = function(map, shape, color="green"){
 create_layerControl = function(map, groupNames = c()){
   return(addLayersControl(map,
     baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-    overlayGroups =c(groupNames, c("Selected", "Custom")),
+    overlayGroups=groupNames,
     options = layersControlOptions(collapsed = FALSE)
   ))
 }
 
 load4leaflet = function(path, name, ID_var=""){
-  polyg <<- sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
-  ID_var <<-ID_var
+  polyg=sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
+  ID_var=ID_var
   if(ID_var==""){
     result = transmute(polyg, IDs = row_number())
   }else{
