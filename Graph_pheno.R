@@ -112,6 +112,8 @@ server = function(input, output, session){
   observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
   observe({on_click(input$map_marker_click[["id"]])})  #for points
   observeEvent(input$map_draw_new_feature, {
+    drawing_infos = input$map_draw_new_feature
+    newF = create_feature(drawing_infos)
     #determin how many features already exist
     Ncustom = session$userData$shapes %>% 
       filter(name=="Custom") %>% nrow()
@@ -154,8 +156,12 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
+    print("step1")
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
-      inner_join(select(selected, name, IDs, Lid), by=c("Area"="Lid"))
+      inner_join(select(sf::st_drop_geometry(selected),
+                        name, IDs, Lid),
+                 by=c("Area"="Lid"))
+    print("step2")
     #set more inforation about the area
     return(sum_Pd)
   })
