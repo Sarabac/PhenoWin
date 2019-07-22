@@ -38,6 +38,9 @@ ui = fluidPage(
     column(4,
            actionButton("compute", "Compute", icon = icon("play")),
            actionButton("deselectAll", "Deselect All")),
+    column(3, radioButtons("clickSelect", "Mode:", inline=TRUE,
+                        choices=c("Select"="select", "Delete"="delete"),
+                        selected="select")),
     column(2, selectInput("CropSelect", "Select Crop",
                 choices = CROPS_CORRESPONDANCE)),
     column(2, fileInput("geofile", "Import Geojson",
@@ -97,16 +100,25 @@ server = function(input, output, session){
     })
   
   on_click = function(clickID){
-    # general function when a feature is clicked
+    # function called when a feature is clicked
     if(is.null(clickID)){return(NULL)}
+    
+    mode = isolate({input$clickSelect})
+    if(mode=="select"){ # select mode
     shapeChanged = session$userData$shapes %>%
       mutate(different = Lid%in%clickID) %>% 
       mutate(selected = xor(selected, different))
-    #reverse selection if id detected
+    # xor reverse selection if Lid detected
     session$userData$shapes = select(shapeChanged, -different)
     leafletProxy("map") %>%
       create_layer(filter(shapeChanged, different))
+    }else{ # delete mode
+      session$userData$shapes = session$userData$shapes %>% 
+        filter(!Lid%in%clickID)
+      leafletProxy("map") %>% removeShape(clickID) %>% 
+        removeMarker(clickID)
     }
+  }
   
   #track click on the polygons or points
   observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
@@ -130,7 +142,8 @@ server = function(input, output, session){
     session$userData$shapes = NewSF %>% 
       rbind(session$userData$shapes)
     #add to the map
-    leafletProxy("map") %>% create_layer(NewSF) %>%
+    leafletProxy("map") %>%
+      create_layer(NewSF) %>%
       create_layerControl(unique(session$userData$shapes$name))
     
   })

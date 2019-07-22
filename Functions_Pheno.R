@@ -254,11 +254,11 @@ create_map = function(){
   return(map)
 }
 
-create_layer = function(map, shape, color="green"){
+create_layer = function(map, shape){
   if(!nrow(shape)){return(map)} # no change if nothing to add
   for(Li in shape$Lid){
     sh = shape %>% filter(Lid==Li)
-    if(sh$selected){color="red"}else{color="blue"}
+    color = ifelse(sh$selected, "red", "blue")
     
     if (is.point(sh)){
       map = map %>% removeMarker(sh$Lid) %>% 
@@ -294,7 +294,6 @@ create_layerControl = function(map, groupNames = c()){
 
 load4leaflet = function(path, name, ID_var=""){
   polyg=sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
-  ID_var=ID_var
   if(ID_var==""){
     result = transmute(polyg, IDs = row_number())
   }else{
