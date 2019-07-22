@@ -83,9 +83,6 @@ extract_velox = function(infos, r, sfObj){
   # infos: data frame contaning  the crop, date, phase
   # r: velox object
   # sfObj: sf object
-  tinfos <<- infos
-  tr <<- r
-  tsfObj <<- sfObj
   infos = infos %>% mutate(join=as.character(row_number()))
   repro = sf::st_transform(sfObj, crs = r$crs)
   point = repro %>% filter(is.point(geometry)) %>%
@@ -95,9 +92,7 @@ extract_velox = function(infos, r, sfObj){
     sf::st_cast("MULTIPOLYGON")# for homogenous geometry classes
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
-  print("avant")
   if(nrow(point)){
-    print("apres")
     v = r$extract_points(point)
     colnames(v) = infos$join
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
@@ -259,31 +254,31 @@ create_map = function(){
   return(map)
 }
 
-create_layer = function(map, shape, color="green"){
+create_layer = function(map, shape){
   if(!nrow(shape)){return(map)} # no change if nothing to add
-  for(nam in unique(shape$name)){
-    point <<- shape %>% filter(nam==name&is.point(geometry))
-    polyg = shape %>% filter(nam==name&!is.point(geometry))
-    if (nrow(point)){
-      map = map %>%
+  for(Li in shape$Lid){
+    sh = shape %>% filter(Lid==Li)
+    color = ifelse(sh$selected, "red", "blue")
+    
+    if (is.point(sh)){
+      map = map %>% removeMarker(sh$Lid) %>% 
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
-                          layerId = point$Lid,
-                          label = as.character(point$IDs),
+                          layerId = sh$Lid,
+                          label = as.character(sh$IDs),
                           labelOptions = labelOptions(noHide = T),
-                          group = nam,
-                          data = point)
-    }
-    if (nrow(polyg)){
-      map = map %>% 
+                          group = sh$name,
+                          data = sh)
+    }else{
+      map = map %>% removeShape(sh$Lid) %>% 
         addPolygons(color = color, weight = 1, smoothFactor = 0.5,
-                    opacity = 1.0, fillOpacity = 0,
-                    layerId = polyg$Lid,
-                    group = nam,
-                    data = polyg,
-                    label = as.character(polyg$IDs),
+                    opacity = 1.0, fillOpacity = 0.3,
+                    layerId = sh$Lid,
+                    group = sh$name,
+                    data = sh,
+                    label = as.character(sh$IDs),
                     labelOptions = labelOptions(noHide = T),
                     highlightOptions = highlightOptions(
-                      color = "red", weight = 3, bringToFront = TRUE))
+                      color = "orange", weight = 3, bringToFront = TRUE))
     }
   }
   return(map)
@@ -292,14 +287,13 @@ create_layer = function(map, shape, color="green"){
 create_layerControl = function(map, groupNames = c()){
   return(addLayersControl(map,
     baseGroups = c("OpenStreetMap", "OpenTopoMap","Orthos"),
-    overlayGroups =c(groupNames, c("Selected", "Custom")),
+    overlayGroups=groupNames,
     options = layersControlOptions(collapsed = FALSE)
   ))
 }
 
 load4leaflet = function(path, name, ID_var=""){
-  polyg <<- sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
-  ID_var <<-ID_var
+  polyg=sf::st_transform(sf::read_sf(path),LEAFLET_CRS)
   if(ID_var==""){
     result = transmute(polyg, IDs = row_number())
   }else{

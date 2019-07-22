@@ -37,8 +37,10 @@ ui = fluidPage(
   fluidRow(
     column(4,
            actionButton("compute", "Compute", icon = icon("play")),
-           actionButton("selectAll", "Select All"),
            actionButton("deselectAll", "Deselect All")),
+    column(3, radioButtons("clickSelect", "Mode:", inline=TRUE,
+                        choices=c("Select"="select", "Delete"="delete"),
+                        selected="select")),
     column(2, selectInput("CropSelect", "Select Crop",
                 choices = CROPS_CORRESPONDANCE)),
     column(2, fileInput("geofile", "Import Geojson",
@@ -98,37 +100,37 @@ server = function(input, output, session){
     })
   
   on_click = function(clickID){
-    # general function when a feature is clicked
-    if(!is.null(clickID)){
-      #ClickID can be format Selected_Lid or just Lid
-      #str_detect is apply to check which Lid match
-      session$userData$shapes = session$userData$shapes %>% 
-        mutate(selected = xor(selected,#reverse selection if id detected
-          sapply(Lid, function(ID){#apply on each row
-            any(str_detect(clickID, paste(ID,"$",sep="")))
-          }))
-        )
-    }
-    #print(shape2)
-    #modifie the map according to the changes
-    selectedFeatures <<- session$userData$shapes %>% 
-      filter(selected) %>%
-      mutate(name="Selected", Lid=paste("Selected", Lid, sep="_"))
+    # function called when a feature is clicked
+    if(is.null(clickID)){return(NULL)}
+    
+    mode = isolate({input$clickSelect})
+    if(mode=="select"){ # select mode
+    shapeChanged = session$userData$shapes %>%
+      mutate(different = Lid%in%clickID) %>% 
+      mutate(selected = xor(selected, different))
+    # xor reverse selection if Lid detected
+    session$userData$shapes = select(shapeChanged, -different)
     leafletProxy("map") %>%
-      clearGroup("Selected") %>% 
-      create_layer(selectedFeatures, color="red")
+      create_layer(filter(shapeChanged, different))
+    }else{ # delete mode
+      session$userData$shapes = session$userData$shapes %>% 
+        filter(!Lid%in%clickID)
+      leafletProxy("map") %>% removeShape(clickID) %>% 
+        removeMarker(clickID)
+    }
   }
   
   #track click on the polygons or points
   observe({on_click(input$map_shape_click[["id"]])})   #for polygons   
   observe({on_click(input$map_marker_click[["id"]])})  #for points
   observeEvent(input$map_draw_new_feature, {
-    print("New Feature")
-    drdd <<- input$map_draw_new_feature
-    newF <<- create_feature(drdd)
+    drawing_infos = input$map_draw_new_feature
+    newF = create_feature(drawing_infos)
+    #determin how many features already exist
     Ncustom = session$userData$shapes %>% 
       filter(name=="Custom") %>% nrow()
     print(Ncustom)
+    #create the new feature
     NewSF = tibble(
       IDs = as.character(Ncustom+1),
       geometry = newF,
@@ -136,25 +138,22 @@ server = function(input, output, session){
       selected=TRUE
     ) %>% mutate(Lid = paste(name, IDs, sep="_")) %>% 
       sf::st_sf()
+    #add tto the user list
     session$userData$shapes = NewSF %>% 
       rbind(session$userData$shapes)
-    leafletProxy("map") %>% create_layer(NewSF)
-    shape <<- session$userData$shapes
-    on_click(NULL)
+    #add to the map
+    leafletProxy("map") %>%
+      create_layer(NewSF) %>%
+      create_layerControl(unique(session$userData$shapes$name))
     
   })
   
   observeEvent(input$deselectAll,{
-    # select all features
-    session$userData$shapes = session$userData$shapes %>%
-      mutate(selected = FALSE)
-    on_click(NULL) # update the map
-  })
-  observeEvent(input$selectAll,{
     # deselect all features
     session$userData$shapes = session$userData$shapes %>%
-      mutate(selected = TRUE)
-    on_click(NULL) # update the map
+      mutate(selected = FALSE)
+    leafletProxy("map") %>% # update the map
+      create_layer(session$userData$shapes) 
   })
   
 
@@ -170,8 +169,12 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
+    print("step1")
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
-      inner_join(select(selected, name, IDs, Lid), by=c("Area"="Lid"))
+      inner_join(select(sf::st_drop_geometry(selected),
+                        name, IDs, Lid),
+                 by=c("Area"="Lid"))
+    print("step2")
     #set more inforation about the area
     return(sum_Pd)
   })
