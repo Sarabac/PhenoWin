@@ -196,7 +196,8 @@ create_feature = function(feature){
   return(geom_set)
 }
 
-build_DOY_graph = function(dat){
+build_DOY_graph = function(dat, date_breaks=waiver(),
+                           user_facet=facet_grid(Area~Crop)){
   # create the Phenological graph from the data frame "dat"
   # with 3 columns:
   # "Date": class Date
@@ -204,13 +205,16 @@ build_DOY_graph = function(dat){
   # "P": phenological stage
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
     geom_tile() +
-    facet_grid(Area~Crop)+
+    user_facet+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
                    linetype = "Year"), size = 2)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
                    linetype = "Month"))  +
     labs(fill = "Phenology", alpha = "Probability") +
     color_fill_custom +
+    scale_x_date(name="DOY", date_breaks=date_breaks,
+                 labels=scales::date_format("%j"),
+                 sec.axis=dup_axis(name="Date",labels = scales::date_format("%d %b %Y"))) +
     scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
     theme(axis.text.x=element_text(angle=30, hjust=1),
           axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))

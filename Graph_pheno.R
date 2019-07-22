@@ -170,7 +170,10 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    return(cumsum_Pheno(Pd, digit = 2))
+    sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
+      inner_join(select(selected, name, IDs, Lid), by=c("Area"="Lid"))
+    #set more inforation about the area
+    return(sum_Pd)
   })
 
   output$DOY_GRAPH = renderPlot({
@@ -181,14 +184,11 @@ server = function(input, output, session){
     to = input$DatesMerge[2]
     label_period = period_labelling(from,to)
     
-    graph = dat %>%
+    graph = dat %>% #remove the data not within the time scale
       filter(Date > as.Date(from) & Date < as.Date(to)) %>%
-      build_DOY_graph() +
-      scale_x_date(name="DOY", date_breaks=label_period,
-                   labels=scales::date_format("%j"),
-                   sec.axis=dup_axis(
-                     name="Date",labels = scales::date_format("%d %b %Y")
-                     ))
+      build_DOY_graph(date_breaks=label_period,
+                      user_facet = facet_grid(name+IDs ~ Crop))
+
     return(graph)
     })
 
