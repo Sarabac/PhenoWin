@@ -243,7 +243,7 @@ create_map = function(){
                     circleOptions = FALSE,
                     rectangleOptions = FALSE,
                     circleMarkerOptions = FALSE,
-                    polygonOptions = TRUE,
+                    polygonOptions = FALSE,
                     markerOptions = TRUE,
                     singleFeature = TRUE
     ) %>% 

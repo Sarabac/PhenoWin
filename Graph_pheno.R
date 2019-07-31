@@ -14,10 +14,6 @@ library(lubridate)
 # to upload large geojson files
 options(shiny.maxRequestSize=30*1024^2)
 
-#shape_init = rbind(
-#  load4leaflet(SHP_FILE, "Climat"),
-#  load4leaflet(GERMANY, "Germany")
-#)
 
 shape_init = load4leaflet(GERMANY, "Germany")
 
@@ -93,12 +89,6 @@ server = function(input, output, session){
     removeModal()
   })
   
-  select_crop = reactive({
-    # load the velox object corresponding to the selected crop
-    SCrop = input$CropSelect
-    return(readRDS(DATA_FILE(SCrop)))
-    })
-  
   on_click = function(clickID){
     # function called when a feature is clicked
     if(is.null(clickID)){return(NULL)}
@@ -161,20 +151,23 @@ server = function(input, output, session){
     # create the data frame for the graph
 
     #take all the selected features
+    showModal(modalDialog(helpText("Loading"), footer =NULL))
     selected = session$userData$shapes %>% filter(selected)
     print(selected)
     if(!nrow(selected)){return(NULL)}#stop if nothing is selected
-    
-    infos = select_crop()# the reactive function above
+    # load the velox object corresponding to the selected crop
+    SCrop = input$CropSelect
+    infos = readRDS(DATA_FILE(SCrop))
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    print("step1")
+    
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
       inner_join(select(sf::st_drop_geometry(selected),
                         name, IDs, Lid),
                  by=c("Area"="Lid"))
-    print("step2")
+    removeModal()
+    
     #set more inforation about the area
     return(sum_Pd)
   })
