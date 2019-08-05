@@ -78,7 +78,7 @@ server = function(input, output, session){
   observeEvent(input$ok,{
     #When the choice of the IDs is made
     infos = session$userData$currentGeo #retrive the file data
-    newShape = load4leaflet(infos$path,
+    newShape = load4leaflet(infos$path, #remove the file extension
                             str_remove(infos$name, "\\..*$"),
                             input$varchoice)
     session$userData$shapes = rbind(
@@ -180,11 +180,9 @@ server = function(input, output, session){
 
   output$DOY_GRAPH = renderPlot({
     # Draw the graph
-    dat = Build_Dataset()
-    
+    dat = Build_Dataset() %>% 
     #join with the name of the crop
-    dat = left_join(dat, CROPS_CORRESPONDANCE_FRAME,
-                    by = "Crop") %>% 
+      left_join(CROPS_CORRESPONDANCE_FRAME, by = "Crop") %>% 
       mutate(Crop = coalesce(Crop_name , as.character(Crop)))
     if(is.null(dat)){return(NULL)}
     from = input$DatesMerge[1]
@@ -202,7 +200,10 @@ server = function(input, output, session){
   output$downloadData <- downloadHandler(
     filename = "PhenoWin.csv",
     content = function(file) {
-      Pd = Extract_Dataset()
+      Pd = Extract_Dataset() %>% 
+        left_join(CROPS_CORRESPONDANCE_FRAME, by = "Crop") %>% 
+        mutate(Crop = coalesce(Crop_name , as.character(Crop))) %>% 
+        select(-Crop_name)
       if(is.na(Pd)){
         write.csv(tibble(), file, row.names = FALSE)
       }else{

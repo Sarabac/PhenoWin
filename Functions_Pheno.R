@@ -1,5 +1,5 @@
 
-list.of.packages = c("tidyverse", "lubridate", "sp",
+list.of.packages = c("tidyverse", "lubridate", "sf",
                      "raster", "velox", "shiny", "leaflet", "scales", "leaflet.extras", "rgdal")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){install.packages(new.packages)}
@@ -10,8 +10,6 @@ library(lubridate)
 library(leaflet.extras)
 
 # variables
-# variables
-SHP_FILE = file.path("_Zones/gem2005_BKR_simple.shp") # Landern
 GERMANY = file.path("_Zones/DEU_adm0.shp") #border of germany
 
 RU.DIR = "_DOY/" # DOY geotif file
