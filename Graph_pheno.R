@@ -39,8 +39,8 @@ ui = fluidPage(
                         selected="select")),
     column(2, selectInput("CropSelect", "Select Crop",
                 choices = CROPS_CORRESPONDANCE)),
-    column(2, fileInput("geofile", "Import Geojson",
-          accept = c(".geojson")))),
+    column(2, fileInput("geofile", "Import Geojson", accept = c(".geojson")),
+           downloadButton("downloadData", "Download"))),
   fluidRow(leafletOutput("map")),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
@@ -147,7 +147,7 @@ server = function(input, output, session){
   })
   
 
-  Build_Dataset = eventReactive(input$compute,{
+  Extract_Dataset = eventReactive(input$compute,{
     # create the data frame for the graph
 
     #take all the selected features
@@ -161,12 +161,19 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    
-    sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
-      inner_join(select(sf::st_drop_geometry(selected),
-                        name, IDs, Lid),
-                 by=c("Area"="Lid"))
     removeModal()
+    return(Pd)
+  })
+    
+    Build_Dataset = reactive({
+    Pd = Extract_Dataset()
+    sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
+      inner_join( # get the user name of the area
+        select(sf::st_drop_geometry(session$userData$shapes),
+                        name, IDs, Lid),
+        by=c("Area"="Lid")
+        )
+
     
     #set more inforation about the area
     return(sum_Pd)
@@ -175,6 +182,11 @@ server = function(input, output, session){
   output$DOY_GRAPH = renderPlot({
     # Draw the graph
     dat = Build_Dataset()
+    
+    #join with the name of the crop
+    dat = left_join(dat, CROPS_CORRESPONDANCE_FRAME,
+                    by = "Crop") %>% 
+      mutate(Crop = coalesce(Crop_name , as.character(Crop)))
     if(is.null(dat)){return(NULL)}
     from = input$DatesMerge[1]
     to = input$DatesMerge[2]
@@ -187,6 +199,13 @@ server = function(input, output, session){
 
     return(graph)
     })
+  
+  output$downloadData <- downloadHandler(
+    filename = "PhenoWin.csv",
+    content = function(file) {
+      write.csv(Extract_Dataset(), file, row.names = FALSE)
+    }
+  )
 
   output$map = renderLeaflet({
     #initialize the map

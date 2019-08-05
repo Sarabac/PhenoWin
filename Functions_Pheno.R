@@ -42,14 +42,18 @@ color_fill_custom = scale_fill_manual(values = color_fill_rule)
 
 # Corespondance between the name of the crop and its number
 CROPS_CORRESPONDANCE = list(
-  "201" = 201,
-  "202" = 202,
-  "204" = 204,
-  "205" = 205,
-  "208" = 208,
-  "215" = 215
+  "Permanent Grassland" = 201,
+  "Winter Wheat" = 202,
+  "Winter Barley" = 204,
+  "Winter Rape" = 205,
+  "Oat" = 208,
+  "Maize" = 215
 )
 
+CROPS_CORRESPONDANCE_FRAME = tibble(
+  Crop = unlist(CROPS_CORRESPONDANCE),
+  Crop_name = names(CROPS_CORRESPONDANCE)
+)
 
 
 extract_n = function(dat, n){
@@ -93,14 +97,18 @@ extract_velox = function(infos, r, sfObj){
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
   if(nrow(point)){
+    print("extr...")
     v = r$extract_points(point)
     colnames(v) = infos$join
+    print("...extr")
+    print("doy...")
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
       gather("join", "DOY", -RN) %>%
       inner_join(infos, by="join") %>%
       inner_join(sf::st_drop_geometry(point), by="RN") %>% 
       select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
       bind_rows(PhenoDOY)
+    print("...doy")
   }
   if (nrow(polyg)){
   v = r$extract(polyg, df=TRUE)
@@ -259,7 +267,7 @@ create_layer = function(map, shape){
   for(Li in shape$Lid){
     sh = shape %>% filter(Lid==Li)
     color = ifelse(sh$selected, "red", "blue")
-    
+    print(is.point(sh))
     if (is.point(sh)){
       map = map %>% removeMarker(sh$Lid) %>% 
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
