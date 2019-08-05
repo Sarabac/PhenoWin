@@ -31,16 +31,17 @@ ui = fluidPage(
       "))
   ),
   fluidRow(
-    column(4,
+    column(2,
            actionButton("compute", "Compute", icon = icon("play")),
            actionButton("deselectAll", "Deselect All")),
-    column(3, radioButtons("clickSelect", "Mode:", inline=TRUE,
+    column(2, radioButtons("clickSelect", "Mode:", inline=TRUE,
                         choices=c("Select"="select", "Delete"="delete"),
                         selected="select")),
     column(2, selectInput("CropSelect", "Select Crop",
                 choices = CROPS_CORRESPONDANCE)),
-    column(2, fileInput("geofile", "Import Geojson", accept = c(".geojson")),
-           downloadButton("downloadData", "Download"))),
+    column(2, fileInput("geofile", "Import Geojson", accept = c(".geojson"))),
+    column(2, downloadButton("downloadData", "Download Extracted Dataset") ),
+    column(2, downloadButton("downloadPhase", "Download Phase Code") )),
   fluidRow(leafletOutput("map")),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
@@ -119,7 +120,6 @@ server = function(input, output, session){
     #determin how many features already exist
     Ncustom = session$userData$shapes %>% 
       filter(name=="Custom") %>% nrow()
-    print(Ncustom)
     #create the new feature
     NewSF = tibble(
       IDs = as.character(Ncustom+1),
@@ -153,7 +153,6 @@ server = function(input, output, session){
     #take all the selected features
     showModal(modalDialog(helpText("Loading"), footer =NULL))
     selected = session$userData$shapes %>% filter(selected)
-    print(selected)
     if(!nrow(selected)){return(NULL)}#stop if nothing is selected
     # load the velox object corresponding to the selected crop
     SCrop = input$CropSelect
@@ -203,9 +202,19 @@ server = function(input, output, session){
   output$downloadData <- downloadHandler(
     filename = "PhenoWin.csv",
     content = function(file) {
-      write.csv(Extract_Dataset(), file, row.names = FALSE)
-    }
-  )
+      Pd = Extract_Dataset()
+      if(is.na(Pd)){
+        write.csv(tibble(), file, row.names = FALSE)
+      }else{
+        write.csv(Pd, file, row.names = FALSE)
+      }
+    })
+    
+    output$downloadPhase <- downloadHandler(
+      filename = "Phase.csv",
+      content = function(file) {
+        write.csv(phases, file, row.names = FALSE)
+      })
 
   output$map = renderLeaflet({
     #initialize the map

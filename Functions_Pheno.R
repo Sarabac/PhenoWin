@@ -24,20 +24,8 @@ SELECTED = "Selected"
 SNAME = function(x){paste(SELECTED, x, sep="_")}
 
 ### Colors corresponding to each phenological stage
-CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
-col.p <- c("#FFFE89", #5
-           "#3288BD", #10
-           "#e5f4e3", #12
-           "#c4e7bf", #14
-           "#ABDDA4", #15
-           "#93d4c0", #17
-           "#66C2A5", #18
-           "#feecb9", #19
-           "#FDAE61", #21
-           "#FDAE61", #22
-           "#F46D43", #24
-           "#99c693") #67
-color_fill_rule = setNames(col.p, CT.P)
+phases = read.csv("Phases.csv")
+color_fill_rule = setNames(phases$Color, phases$Code)
 color_fill_custom = scale_fill_manual(values = color_fill_rule)
 
 # Corespondance between the name of the crop and its number
@@ -97,18 +85,14 @@ extract_velox = function(infos, r, sfObj){
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
   if(nrow(point)){
-    print("extr...")
     v = r$extract_points(point)
     colnames(v) = infos$join
-    print("...extr")
-    print("doy...")
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
       gather("join", "DOY", -RN) %>%
       inner_join(infos, by="join") %>%
       inner_join(sf::st_drop_geometry(point), by="RN") %>% 
       select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
       bind_rows(PhenoDOY)
-    print("...doy")
   }
   if (nrow(polyg)){
   v = r$extract(polyg, df=TRUE)
@@ -267,7 +251,6 @@ create_layer = function(map, shape){
   for(Li in shape$Lid){
     sh = shape %>% filter(Lid==Li)
     color = ifelse(sh$selected, "red", "blue")
-    print(is.point(sh))
     if (is.point(sh)){
       map = map %>% removeMarker(sh$Lid) %>% 
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),

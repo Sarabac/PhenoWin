@@ -1,0 +1,18 @@
+Code,Color,Name
+1,#00ffff,Start greening
+5,#FFFE89,Beginning of flowering
+10,#3288BD,Beginning of sowing
+12,#e5f4e3,Emergence
+14,#c4e7bf,4th leaf unfolded
+15,#ABDDA4,Beginning of shooting
+17,#93d4c0,Beginning of bud formation
+18,#66C2A5,Beginning of heading
+19,#feecb9,Beginning of milk ripening
+20,#ffff00,Early dough ripening
+21,#FDAE61,Beginning of yellow ripening
+22,#FDAE61,Beginning of full ripening
+24,#F46D43,Harvest
+25,#ff0000,Hay cut 
+26,#800000,silage cut
+65,#006600,Beginning of tassel emergence
+67,#99c693,Stem elongation
