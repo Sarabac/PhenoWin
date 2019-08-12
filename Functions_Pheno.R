@@ -195,7 +195,7 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
                    linetype = "Year"), size = 2)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
                    linetype = "Month"))  +
-    labs(fill = "Phenology", alpha = "Probability") +
+    labs(fill = "Phenology", alpha = "Weight") +
     color_fill_custom +
     scale_x_date(name="DOY", date_breaks=date_breaks,
                  labels=scales::date_format("%j"),
