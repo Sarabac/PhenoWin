@@ -1,5 +1,5 @@
 
-list.of.packages = c("tidyverse", "lubridate", "sp",
+list.of.packages = c("tidyverse", "lubridate", "sf",
                      "raster", "velox", "shiny", "leaflet", "scales", "leaflet.extras", "rgdal")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){install.packages(new.packages)}
@@ -10,8 +10,6 @@ library(lubridate)
 library(leaflet.extras)
 
 # variables
-# variables
-SHP_FILE = file.path("_Zones/gem2005_BKR_simple.shp") # Landern
 GERMANY = file.path("_Zones/DEU_adm0.shp") #border of germany
 
 RU.DIR = "_DOY/" # DOY geotif file
@@ -24,20 +22,8 @@ SELECTED = "Selected"
 SNAME = function(x){paste(SELECTED, x, sep="_")}
 
 ### Colors corresponding to each phenological stage
-CT.P <- c(5,10,12,14,15,17,18,19,21,22,24,67)
-col.p <- c("#FFFE89", #5
-           "#3288BD", #10
-           "#e5f4e3", #12
-           "#c4e7bf", #14
-           "#ABDDA4", #15
-           "#93d4c0", #17
-           "#66C2A5", #18
-           "#feecb9", #19
-           "#FDAE61", #21
-           "#FDAE61", #22
-           "#F46D43", #24
-           "#99c693") #67
-color_fill_rule = setNames(col.p, CT.P)
+phases = read.csv("Phases.csv")
+color_fill_rule = setNames(phases$Color, phases$Code)
 color_fill_custom = scale_fill_manual(values = color_fill_rule)
 
 # Corespondance between the name of the crop and its number
@@ -97,18 +83,14 @@ extract_velox = function(infos, r, sfObj){
   PhenoDOY = tibble(Area = character(), Crop = factor(), P=factor(),
                     DOY = numeric(), weight = numeric())
   if(nrow(point)){
-    print("extr...")
     v = r$extract_points(point)
     colnames(v) = infos$join
-    print("...extr")
-    print("doy...")
     PhenoDOY = as_tibble(v) %>% mutate(RN = row_number()) %>%
       gather("join", "DOY", -RN) %>%
       inner_join(infos, by="join") %>%
       inner_join(sf::st_drop_geometry(point), by="RN") %>% 
       select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
       bind_rows(PhenoDOY)
-    print("...doy")
   }
   if (nrow(polyg)){
   v = r$extract(polyg, df=TRUE)
@@ -213,7 +195,7 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
                    linetype = "Year"), size = 2)+
     geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
                    linetype = "Month"))  +
-    labs(fill = "Phenology", alpha = "Probability") +
+    labs(fill = "Phenology", alpha = "Weight") +
     color_fill_custom +
     scale_x_date(name="DOY", date_breaks=date_breaks,
                  labels=scales::date_format("%j"),
@@ -267,7 +249,6 @@ create_layer = function(map, shape){
   for(Li in shape$Lid){
     sh = shape %>% filter(Lid==Li)
     color = ifelse(sh$selected, "red", "blue")
-    print(is.point(sh))
     if (is.point(sh)){
       map = map %>% removeMarker(sh$Lid) %>% 
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
