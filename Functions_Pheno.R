@@ -183,24 +183,31 @@ create_feature = function(feature){
 
 build_DOY_graph = function(dat, date_breaks=waiver(),
                            user_facet=facet_grid(Area~Crop)){
-  # create the Phenological graph from the data frame "dat"
-  # with 3 columns:
-  # "Date": class Date
-  # "sum_weight": between 0 and 1
-  # "P": phenological stage
-  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight, fill = as.factor(P)))+
-    geom_tile() +
+  # create the Phenological graph from the data frame "dat" with attributs:
+  #     "Date": class Date
+  #     "sum_weight": between 0 and 1, proportion of pixels in phase P
+  #     "P": phenological stage
+  #     "Area": spatial entities ID
+  #     "Crop": the crop ID
+  # date_breaks: character
+  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight,
+                           fill = as.factor(P)))+
+    geom_tile() + 
     user_facet+
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), "01", "01", sep = "-")),
-                   linetype = "Year"), size = 2)+
-    geom_vline(aes(xintercept = as.Date(paste(year(Date), month(Date), "01", sep = "-")),
+    geom_vline(aes(
+          xintercept = as.Date(paste(year(Date),"01", "01", sep="-")),
+          linetype = "Year"), size = 2)+
+    geom_vline(aes(
+          xintercept = as.Date(paste(year(Date), month(Date), "01", sep="-")),
                    linetype = "Month"))  +
     labs(fill = "Phenology", alpha = "Weight") +
-    color_fill_custom +
+    color_fill_custom + # color fill scall of the phenological stages
     scale_x_date(name="DOY", date_breaks=date_breaks,
                  labels=scales::date_format("%j"),
-                 sec.axis=dup_axis(name="Date",labels = scales::date_format("%d %b %Y"))) +
-    scale_linetype_manual("Breaks", values = c("Month" = "dotted", "Year" = "dashed")) +
+                 sec.axis=dup_axis(
+                   name="Date",labels = scales::date_format("%d %b %Y"))) +
+    scale_linetype_manual("Breaks", 
+                          values = c("Month"="dotted", "Year"="dashed")) +
     theme(axis.text.x=element_text(angle=30, hjust=1),
           axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
   return(graph)

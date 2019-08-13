@@ -14,8 +14,10 @@ library(lubridate)
 # to upload large geojson files
 options(shiny.maxRequestSize=30*1024^2)
 
-
+# load the border of Germany
 shape_init = load4leaflet(GERMANY, "Germany")
+# prevent selecton on the entier Germany
+shape_init$selected = NA
 
 # the minimal value of the time scale
 minDate = as.Date("1993-01-01")
@@ -116,24 +118,25 @@ server = function(input, output, session){
   observe({on_click(input$map_marker_click[["id"]])})  #for points
   observeEvent(input$map_draw_new_feature, {
     drawing_infos = input$map_draw_new_feature
-    newF = create_feature(drawing_infos)
+    newF = create_feature(drawing_infos) # geometry object
     #determin how many features already exist
     Ncustom = session$userData$shapes %>% 
       filter(name=="Custom") %>% nrow()
     #create the new feature
     NewSF = tibble(
-      IDs = as.character(Ncustom+1),
+      IDs = as.character(Ncustom+1), # increase the ID number
       geometry = newF,
       name="Custom",
       selected=TRUE
     ) %>% mutate(Lid = paste(name, IDs, sep="_")) %>% 
-      sf::st_sf()
+      sf::st_sf() # convert into sf
     #add tto the user list
     session$userData$shapes = NewSF %>% 
       rbind(session$userData$shapes)
     #add to the map
     leafletProxy("map") %>%
       create_layer(NewSF) %>%
+      # 
       create_layerControl(unique(session$userData$shapes$name))
     
   })
