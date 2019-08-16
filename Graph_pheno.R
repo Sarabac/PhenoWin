@@ -13,6 +13,7 @@ library(lubridate)
 
 # to upload large geojson files
 options(shiny.maxRequestSize=30*1024^2)
+addResourcePath("_Images", "_Images")
 
 # load the border of Germany
 shape_init = load4leaflet(GERMANY, "Germany")
@@ -25,14 +26,19 @@ minDate = as.Date("1993-01-01")
 maxDate = as.Date(today() + years(1))
 
 # widgets of the shiny app
+title_div = div(img(src="_Images/EMRA_Logo.svg", width="30px"),
+                "PhenoWin: Visualisation of phenological windows in Germany" )
 ui = fluidPage(
   tags$head(# css styles
     tags$style(HTML("
       #compute{background-color:GreenYellow }
       *{font: bold 12px/30px Arial, serif}
-      "))
+      ")),
+    tags$title("PhenoWin"),
+    tags$link(rel="shortcut icon", href="_Images/EMRA_Logo.ico")
   ),
   fluidRow(
+    titlePanel(title_div),
     column(2,
            actionButton("compute", "Compute", icon = icon("play")),
            actionButton("deselectAll", "Deselect All")),

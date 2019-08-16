@@ -1,18 +1,18 @@
-Code,Color,Name
-1,#00ffff,Start greening
-5,#FFFE89,Beginning of flowering
-10,#3288BD,Beginning of sowing
-12,#e5f4e3,Emergence
-14,#c4e7bf,4th leaf unfolded
-15,#ABDDA4,Beginning of shooting
-17,#93d4c0,Beginning of bud formation
-18,#66C2A5,Beginning of heading
-19,#feecb9,Beginning of milk ripening
-20,#ffff00,Early dough ripening
-21,#FDAE61,Beginning of yellow ripening
-22,#FDAE61,Beginning of full ripening
-24,#F46D43,Harvest
-25,#ff0000,Hay cut 
-26,#800000,silage cut
-65,#006600,Beginning of tassel emergence
-67,#99c693,Stem elongation
+Code,Color,Name,ColorName
+1,#56D9DB,Start greening,cadetblue1
+5,#66C2A5,Beginning of flowering,cadetblue3
+10,#3288BD,Beginning of sowing,deepskyblue4
+12,#E5F4E3,Emergence,gainsboro
+14,#C4E7BF,4th leaf unfolded,darkseagreen3
+15,#ABDDA4,Beginning of shooting,darkseagreen4
+17,#93D4C0,Beginning of bud formation,cadetblue4
+18,#66C2A5,Beginning of heading,cadetblue5
+19,#FEECB9,Beginning of milk ripening,cadetblue6
+20,#FEE08B,Early dough ripening,cadetblue7
+21,#FDAE61,Beginning of yellow ripening,cadetblue8
+22,#FDAE67,Beginning of full ripening,cadetblue9
+24,#F46D43,Harvest,cadetblue10
+25,#F44843,Hay cut ,cadetblue11
+26,#F49D43,silage cut,cadetblue12
+65,#93C6A3,Beginning of tassel emergence,cadetblue13
+67,#99C693,Stem elongation,cadetblue14

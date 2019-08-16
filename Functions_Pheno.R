@@ -22,9 +22,7 @@ SELECTED = "Selected"
 SNAME = function(x){paste(SELECTED, x, sep="_")}
 
 ### Colors corresponding to each phenological stage
-phases = read.csv("Phases.csv")
-color_fill_rule = setNames(phases$Color, phases$Code)
-color_fill_custom = scale_fill_manual(values = color_fill_rule)
+phasesCode = read.csv("Phases.csv") %>% arrange(Code)
 
 # Corespondance between the name of the crop and its number
 CROPS_CORRESPONDANCE = list(
@@ -190,10 +188,14 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
   #     "Area": spatial entities ID
   #     "Crop": the crop ID
   # date_breaks: character
+  fphasesCode = filter(phasesCode, Code%in%dat$P)
+  color_fill_rule = as.vector(fphasesCode$Color)
+  names(color_fill_rule) <- fphasesCode$Code
   graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight,
                            fill = as.factor(P)))+
     geom_tile() + 
     user_facet+
+    scale_fill_manual(values = color_fill_rule) + # color fill scall of the phenological stages
     geom_vline(aes(
           xintercept = as.Date(paste(year(Date),"01", "01", sep="-")),
           linetype = "Year"), size = 2)+
@@ -201,7 +203,7 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
           xintercept = as.Date(paste(year(Date), month(Date), "01", sep="-")),
                    linetype = "Month"))  +
     labs(fill = "Phenology", alpha = "Weight") +
-    color_fill_custom + # color fill scall of the phenological stages
+    
     scale_x_date(name="DOY", date_breaks=date_breaks,
                  labels=scales::date_format("%j"),
                  sec.axis=dup_axis(
