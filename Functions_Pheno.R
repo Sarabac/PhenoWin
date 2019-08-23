@@ -91,7 +91,7 @@ extract_velox = function(infos, r, sfObj){
       bind_rows(PhenoDOY)
   }
   if (nrow(polyg)){
-  v = r$extract(polyg, df=TRUE)
+  v = r$extract(polyg, df=TRUE, small = TRUE)
   colnames(v) = c("RN", infos$join) # first column is polygone ID
   PhenoDOY = as_tibble(v) %>%
     gather("join", "DOY", -RN) %>%
@@ -242,8 +242,6 @@ create_map = function(){
                     circleOptions = FALSE,
                     rectangleOptions = FALSE,
                     circleMarkerOptions = FALSE,
-                    polygonOptions = FALSE,
-                    markerOptions = TRUE,
                     singleFeature = TRUE
     ) %>% 
     addSearchOSM() %>% addResetMapButton() %>%
@@ -257,26 +255,39 @@ create_layer = function(map, shape){
   if(!nrow(shape)){return(map)} # no change if nothing to add
   for(Li in shape$Lid){
     sh = shape %>% filter(Lid==Li)
-    color = ifelse(sh$selected, "red", "blue")
+    
+    if(is.na(sh$selected)){
+      color = "black"
+      fillOpacity = 0
+      highlightOpt = NULL
+      label = NULL
+      layerId = NULL
+    }else{
+      color = ifelse(sh$selected, "red", "blue")
+      fillOpacity = 0.3
+      highlightOpt = highlightOptions(
+        color = "orange", weight = 3, bringToFront = TRUE)
+      label = as.character(sh$IDs)
+      layerId = sh$Lid
+    }
     if (is.point(sh)){
       map = map %>% removeMarker(sh$Lid) %>% 
         addAwesomeMarkers(icon = awesomeIcons(markerColor=color),
-                          layerId = sh$Lid,
-                          label = as.character(sh$IDs),
+                          layerId = layerId,
+                          label = label,
                           labelOptions = labelOptions(noHide = T),
                           group = sh$name,
                           data = sh)
     }else{
       map = map %>% removeShape(sh$Lid) %>% 
         addPolygons(color = color, weight = 1, smoothFactor = 0.5,
-                    opacity = 1.0, fillOpacity = 0.3,
-                    layerId = sh$Lid,
+                    opacity = 1.0, fillOpacity = fillOpacity,
+                    layerId = layerId,
                     group = sh$name,
                     data = sh,
-                    label = as.character(sh$IDs),
+                    label = label,
                     labelOptions = labelOptions(noHide = T),
-                    highlightOptions = highlightOptions(
-                      color = "orange", weight = 3, bringToFront = TRUE))
+                    highlightOptions = highlightOpt)
     }
   }
   return(map)

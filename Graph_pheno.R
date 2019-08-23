@@ -1,6 +1,7 @@
 #https://moderndata.plot.ly/plotly-4-7-0-now-on-cran/
 #https://plotly-r.com/
-W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
+#W.DIR <- dirname(rstudioapi::getActiveDocumentContext()$path)
+W.DIR <- "~/Dropbox/Kuhn/phenology/PhenoWin"
 setwd(W.DIR)
 
 source("Functions_Pheno.R")
