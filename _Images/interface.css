@@ -1,22 +1,37 @@
 #compute{
   background-color:GreenYellow
 }
-*{
-  font: bold 12px/30px Arial, serif
+
+.tab-pane[data-value="APP"] * {
+	font-weight: bold;
 }
 
-.header{
-  display: flex;
-  flex-direction:  column;
-}
-.header h2{
-   padding-left: 50px;
+.tab-pane[data-value="HELP"] {
+	background-color: #f5fbe5;
 }
 
-.header h2 div{
-
-  font-size: 1em;
+body{
+  background-color: #eaf2ed;
 }
+
+.navbar{
+  position: sticky;
+  top: 0;
+  left: 0;
+}
+.navbar-brand{
+  padding: 0;
+}
+h1{
+  margin-top: 3px;
+  margin-left: 10px
+}
+
+.navbar-nav{
+  float: right;
+  margin-right: 30px;
+}
+
 
 .buttons{
   display: flex;
@@ -29,4 +44,11 @@
   display: flex;
   flex-direction: column;
   justify-content: space-evenly
+}
+
+.irs-grid-text {
+	color: #292e39;
+}
+.awesome-marker:hover{
+ filter:hue-rotate(40deg) saturate(4)
 }

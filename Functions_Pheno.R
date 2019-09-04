@@ -211,7 +211,11 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
     scale_linetype_manual("Breaks", 
                           values = c("Month"="dotted", "Year"="dashed")) +
     theme(axis.text.x=element_text(angle=30, hjust=1),
-          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0))
+          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0),
+          axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank()
+          )
   return(graph)
 }
 

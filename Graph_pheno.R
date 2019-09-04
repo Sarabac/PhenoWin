@@ -27,19 +27,19 @@ minDate = as.Date("1993-01-01")
 maxDate = as.Date(today() + years(1))
 
 # widgets of the shiny app
-title_div = div(img(src="_Images/EMRA_Logo.svg", width="30px"),
+title_div = h1(img(src="_Images/EMRA_Logo.svg", width="30px"),
                 "PhenoWin: Visualisation of phenological windows in Germany" )
-ui = fluidPage(
-  
+ui = navbarPage(
+  selected = "APP",
+  windowTitle = "PhenoWin",
+  title_div,
   tags$head(# css styles
-    tags$title("PhenoWin"),
     tags$link(rel="shortcut icon", href="_Images/EMRA_Logo.ico")
   ),
   includeCSS("_Images/interface.css"),
-  fluidRow(
-    titlePanel(title_div),
+  tabPanel("APP",
     fluidRow(
-      div(actionButton("compute", "Compute", icon = icon("play")),
+      div(actionButton("compute", "Draw Graph", icon = icon("play")),
           actionButton("deselectAll", "Deselect All")),
       radioButtons("clickSelect", "Mode:", inline=TRUE,
                           choices=c("Select"="select", "Delete"="delete"),
@@ -49,19 +49,20 @@ ui = fluidPage(
       fileInput("geofile", "Import Geojson", accept = c(".geojson")),
       div(
         downloadButton("downloadData", "Download Extracted Dataset") ,
-        downloadButton("downloadPhase", "Download Phase Code")),
+        downloadButton("downloadPhase", "Download Phase Code"),
+        downloadButton("downloadGeojson", "Export Geojson")),
       class = "buttons"
-    ),
-    class = "header"
     ),
   fluidRow(leafletOutput("map")),
   fluidRow(
-             sliderInput("DatesMerge", "Time Periode",
+             sliderInput("DatesMerge", NULL,
                          min = minDate,
                          max = maxDate,
                          value=c(as.Date("2015-01-01"),as.Date("2018-01-01") ),
                          timeFormat="%Y-%m-%d", width = "100%")),
   fluidRow(plotOutput("DOY_GRAPH"))
+  ),
+  tabPanel("HELP", includeMarkdown("README.md"))
   )
 
 
@@ -154,9 +155,9 @@ server = function(input, output, session){
   observeEvent(input$deselectAll,{
     # deselect all features
     session$userData$shapes = session$userData$shapes %>%
-      mutate(selected = FALSE)
+      mutate(selected = if_else(is.na(selected), NA, FALSE))
     leafletProxy("map") %>% # update the map
-      create_layer(session$userData$shapes) 
+      create_layer(filter(session$userData$shapes, !selected)) 
   })
   
 
@@ -228,6 +229,12 @@ server = function(input, output, session){
       filename = "Phase.csv",
       content = function(file) {
         write.csv(phases, file, row.names = FALSE)
+      })
+    output$downloadGeojson <- downloadHandler(
+      filename = "features.Geojson",
+      content = function(file) {
+        shape_export = drop_na(session$userData$shapes, selected)
+        sf::st_write(shape_export, file)
       })
 
   output$map = renderLeaflet({
