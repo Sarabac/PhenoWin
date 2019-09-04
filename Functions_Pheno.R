@@ -306,7 +306,7 @@ load4leaflet = function(path, name, ID_var=""){
   if(ID_var==""){
     result = transmute(polyg, IDs = row_number())
   }else{
-    result = select(polyg, IDs = !!ID_var)
+    result = dplyr::select(polyg, IDs = !!ID_var)
   }
   return(result %>%
            mutate(name = name, selected = FALSE) %>%
