@@ -1,0 +1,32 @@
+#compute{
+  background-color:GreenYellow
+}
+*{
+  font: bold 12px/30px Arial, serif
+}
+
+.header{
+  display: flex;
+  flex-direction:  column;
+}
+.header h2{
+   padding-left: 50px;
+}
+
+.header h2 div{
+
+  font-size: 1em;
+}
+
+.buttons{
+  display: flex;
+  flex-direction: row;
+  justify-content:  space-between;
+
+}
+
+.buttons > div{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly
+}

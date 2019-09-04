@@ -30,27 +30,30 @@ maxDate = as.Date(today() + years(1))
 title_div = div(img(src="_Images/EMRA_Logo.svg", width="30px"),
                 "PhenoWin: Visualisation of phenological windows in Germany" )
 ui = fluidPage(
+  
   tags$head(# css styles
-    tags$style(HTML("
-      #compute{background-color:GreenYellow }
-      *{font: bold 12px/30px Arial, serif}
-      ")),
     tags$title("PhenoWin"),
     tags$link(rel="shortcut icon", href="_Images/EMRA_Logo.ico")
   ),
+  includeCSS("_Images/interface.css"),
   fluidRow(
     titlePanel(title_div),
-    column(2,
-           actionButton("compute", "Compute", icon = icon("play")),
-           actionButton("deselectAll", "Deselect All")),
-    column(2, radioButtons("clickSelect", "Mode:", inline=TRUE,
-                        choices=c("Select"="select", "Delete"="delete"),
-                        selected="select")),
-    column(2, selectInput("CropSelect", "Select Crop",
-                choices = CROPS_CORRESPONDANCE)),
-    column(2, fileInput("geofile", "Import Geojson", accept = c(".geojson"))),
-    column(2, downloadButton("downloadData", "Download Extracted Dataset") ),
-    column(2, downloadButton("downloadPhase", "Download Phase Code") )),
+    fluidRow(
+      div(actionButton("compute", "Compute", icon = icon("play")),
+          actionButton("deselectAll", "Deselect All")),
+      radioButtons("clickSelect", "Mode:", inline=TRUE,
+                          choices=c("Select"="select", "Delete"="delete"),
+                          selected="select"),
+      selectInput("CropSelect", "Select Crop",
+                  choices = CROPS_CORRESPONDANCE),
+      fileInput("geofile", "Import Geojson", accept = c(".geojson")),
+      div(
+        downloadButton("downloadData", "Download Extracted Dataset") ,
+        downloadButton("downloadPhase", "Download Phase Code")),
+      class = "buttons"
+    ),
+    class = "header"
+    ),
   fluidRow(leafletOutput("map")),
   fluidRow(
              sliderInput("DatesMerge", "Time Periode",
