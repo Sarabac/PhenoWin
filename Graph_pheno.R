@@ -218,7 +218,7 @@ server = function(input, output, session){
         left_join(CROPS_CORRESPONDANCE_FRAME, by = "Crop") %>% 
         mutate(Crop = coalesce(Crop_name , as.character(Crop))) %>% 
         select(-Crop_name)
-      if(is.na(Pd)){
+      if(is.null(nrow(Pd))){
         write.csv(tibble(), file, row.names = FALSE)
       }else{
         write.csv(Pd, file, row.names = FALSE)
@@ -228,7 +228,7 @@ server = function(input, output, session){
     output$downloadPhase <- downloadHandler(
       filename = "Phase.csv",
       content = function(file) {
-        write.csv(phases, file, row.names = FALSE)
+        write.csv(phasesCode, file, row.names = FALSE)
       })
     output$downloadGeojson <- downloadHandler(
       filename = "features.Geojson",

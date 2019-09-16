@@ -9,7 +9,7 @@ library(tidyverse)
 library(lubridate)
 library(leaflet.extras)
 
-# variables
+### Variables
 GERMANY = file.path("_Zones/DEU_adm0.shp") #border of germany
 
 RU.DIR = "_DOY/" # DOY geotif file
@@ -18,27 +18,21 @@ DATA_FILE = function(n){file.path(DATA_FOLDER, paste("DOY_",n,".rds", sep=""))}
 # Access the phenological data of the Crop "n", ready for the graph
 LEAFLET_CRS = sf::st_crs(4326)
 
-SELECTED = "Selected"
-SNAME = function(x){paste(SELECTED, x, sep="_")}
 
 ### Colors corresponding to each phenological stage
 phasesCode = read.csv("Phases.csv") %>% arrange(Code)
 
 # Corespondance between the name of the crop and its number
-CROPS_CORRESPONDANCE = list(
-  "Permanent Grassland" = 201,
-  "Winter Wheat" = 202,
-  "Winter Barley" = 204,
-  "Winter Rape" = 205,
-  "Oat" = 208,
-  "Maize" = 215
-)
+CROPS_CORRESPONDANCE_FRAME = read.csv(
+  "crops.csv",
+  colClasses = c ("numeric", "character")
+  )
+CROPS_CORRESPONDANCE = setNames(
+  as.list(CROPS_CORRESPONDANCE_FRAME$Crop),
+  CROPS_CORRESPONDANCE_FRAME$Crop_name
+  )
 
-CROPS_CORRESPONDANCE_FRAME = tibble(
-  Crop = unlist(CROPS_CORRESPONDANCE),
-  Crop_name = names(CROPS_CORRESPONDANCE)
-)
-
+### Functions 
 
 extract_n = function(dat, n){
   # extract a number of length n from a character vector
@@ -104,7 +98,8 @@ extract_velox = function(infos, r, sfObj){
     # calculate the proportion of each DOY
     # in the polygon
     summarise(weight = sum(weight)) %>% 
-    bind_rows(PhenoDOY)
+    bind_rows(PhenoDOY) %>% 
+    ungroup()
   }
   return(PhenoDOY %>% drop_na() %>% extract_date())
 }

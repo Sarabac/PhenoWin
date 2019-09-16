@@ -19,7 +19,7 @@
     <g>
       <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke-dasharray: 4; stroke: #0000ff" x="140" y="60" width="300" height="39" rx="0" ry="0"/>
       <text font-size="12.8" style="fill: #0000ff; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700" x="290" y="83.4">
-        <tspan x="290" y="83.4">Extract Geotio</tspan>
+        <tspan x="290" y="83.4">Function to create velox objects</tspan>
       </text>
     </g>
     <g>
@@ -299,6 +299,9 @@
     </text>
     <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:700" x="630" y="220">
       <tspan x="630" y="220">Input</tspan>
+    </text>
+    <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="290" y="79.5">
+      <tspan x="290" y="79.5"></tspan>
     </text>
   </g>
 </svg>
