@@ -41,11 +41,13 @@ ui = navbarPage(
     fluidRow(
       div(actionButton("compute", "Draw Graph", icon = icon("play")),
           actionButton("deselectAll", "Deselect All")),
+      div(checkboxInput("polar", "Polar Graph"),
+          sliderInput("height", "Graph Height", min=400, max=5000, value=500)),
+      selectInput("CropSelect", "Select Crop",
+                  choices = CROPS_CORRESPONDANCE),
       radioButtons("clickSelect", "Mode:", inline=TRUE,
                           choices=c("Select"="select", "Delete"="delete"),
                           selected="select"),
-      selectInput("CropSelect", "Select Crop",
-                  choices = CROPS_CORRESPONDANCE),
       fileInput("geofile", "Import Geojson", accept = c(".geojson")),
       div(
         downloadButton("downloadData", "Download Extracted Dataset") ,
@@ -178,7 +180,7 @@ server = function(input, output, session){
     return(Pd)
   })
     
-    Build_Dataset = reactive({
+  Build_Dataset = reactive({
     Pd = Extract_Dataset()
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
       inner_join( # get the user name of the area
@@ -186,12 +188,10 @@ server = function(input, output, session){
                         name, IDs, Lid),
         by=c("Area"="Lid")
         )
-
-    
     #set more inforation about the area
     return(sum_Pd)
   })
-
+  observeEvent(input$compute, {
   output$DOY_GRAPH = renderPlot({
     # Draw the graph
     dat = Build_Dataset() %>% 
@@ -206,10 +206,12 @@ server = function(input, output, session){
     graph = dat %>% #remove the data not within the time scale
       filter(Date > as.Date(from) & Date < as.Date(to)) %>%
       build_DOY_graph(date_breaks=label_period,
-                      user_facet = facet_grid(name+IDs ~ Crop))
+                      user_facet = facet_grid(name+IDs ~ Crop),
+                      polar = input$polar)
 
     return(graph)
-    })
+  }, height = input$height)
+  })
   
   output$downloadData <- downloadHandler(
     filename = "PhenoWin.csv",
@@ -225,17 +227,17 @@ server = function(input, output, session){
       }
     })
     
-    output$downloadPhase <- downloadHandler(
-      filename = "Phase.csv",
-      content = function(file) {
-        write.csv(phasesCode, file, row.names = FALSE)
-      })
-    output$downloadGeojson <- downloadHandler(
-      filename = "features.Geojson",
-      content = function(file) {
-        shape_export = drop_na(session$userData$shapes, selected)
-        sf::st_write(shape_export, file)
-      })
+  output$downloadPhase <- downloadHandler(
+    filename = "Phase.csv",
+    content = function(file) {
+      write.csv(phasesCode, file, row.names = FALSE)
+    })
+  output$downloadGeojson <- downloadHandler(
+    filename = "features.Geojson",
+    content = function(file) {
+      shape_export = drop_na(session$userData$shapes, selected)
+      sf::st_write(shape_export, file)
+    })
 
   output$map = renderLeaflet({
     #initialize the map

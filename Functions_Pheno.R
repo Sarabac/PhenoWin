@@ -175,7 +175,8 @@ create_feature = function(feature){
 }
 
 build_DOY_graph = function(dat, date_breaks=waiver(),
-                           user_facet=facet_grid(Area~Crop)){
+                           user_facet=facet_grid(Area~Crop),
+                           polar = FALSE){
   # create the Phenological graph from the data frame "dat" with attributs:
   #     "Date": class Date
   #     "sum_weight": between 0 and 1, proportion of pixels in phase P
@@ -183,35 +184,61 @@ build_DOY_graph = function(dat, date_breaks=waiver(),
   #     "Area": spatial entities ID
   #     "Crop": the crop ID
   # date_breaks: character
+  # polar: should be drawn in polar coordinates
+  dat = mutate(dat, Year = year(Date), DOY = yday(Date))
+  
   fphasesCode = filter(phasesCode, Code%in%dat$P)
   color_fill_rule = as.vector(fphasesCode$Color)
   names(color_fill_rule) <- fphasesCode$Code
-  graph =  ggplot(dat, aes(x = Date, y=1, alpha = sum_weight,
-                           fill = as.factor(P)))+
-    geom_tile() + 
+  
+  graph =  ggplot(dat)+
     user_facet+
-    scale_fill_manual(values = color_fill_rule) + # color fill scall of the phenological stages
-    geom_vline(aes(
-          xintercept = as.Date(paste(year(Date),"01", "01", sep="-")),
-          linetype = "Year"), size = 2)+
-    geom_vline(aes(
-          xintercept = as.Date(paste(year(Date), month(Date), "01", sep="-")),
-                   linetype = "Month"))  +
-    labs(fill = "Phenology", alpha = "Weight") +
-    
-    scale_x_date(name="DOY", date_breaks=date_breaks,
-                 labels=scales::date_format("%j"),
-                 sec.axis=dup_axis(
-                   name="Date",labels = scales::date_format("%d %b %Y"))) +
-    scale_linetype_manual("Breaks", 
-                          values = c("Month"="dotted", "Year"="dashed")) +
-    theme(axis.text.x=element_text(angle=30, hjust=1),
-          axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0),
-          axis.title.y=element_blank(),
-          axis.text.y=element_blank(),
-          axis.ticks.y=element_blank()
-          )
-  return(graph)
+    scale_fill_manual(values = color_fill_rule) + 
+    # color fill scall of the phenological stages
+    labs(fill = "Phenology", alpha = "Weight")
+  
+  if(polar){
+    Years = distinct(dat, Year)
+    graphResult = graph +
+      geom_tile(aes(x=DOY, y=(Year+(DOY/366)), 
+                    height=1, width=1, alpha = sum_weight,
+                    fill = as.factor(P))) +
+      # separation between layers of the spiral
+      geom_abline(aes(intercept = Year-0.5, slope = 1/366), Years)+
+      geom_label(aes(x = 0, y = Year,  label = Year), Years)+
+      scale_x_continuous(breaks = seq(0, 366, 10), limits = c(0, 366))+
+      # ensure that all the tiles are plotted
+      ylim(c(min(dat$Year) - 2, max(dat$Year) + 2))+
+      theme( # remove the y axis
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()
+      )+
+      coord_polar()
+  }else{
+    graphResult = graph +
+      geom_tile(aes(x=Date, y=1, alpha = sum_weight,
+                    fill = as.factor(P))) +
+      geom_vline(aes(
+            xintercept = as.Date(paste(year(Date),"01", "01", sep="-")),
+            linetype = "Year"), size = 2)+
+      geom_vline(aes(
+            xintercept = as.Date(paste(year(Date), month(Date), "01", sep="-")),
+                     linetype = "Month"))  +
+      scale_x_date(name="DOY", date_breaks=date_breaks,
+                   labels=scales::date_format("%j"),
+                   sec.axis=dup_axis(
+                     name="Date",labels = scales::date_format("%d %b %Y"))) +
+      scale_linetype_manual("Breaks", 
+                            values = c("Month"="dotted", "Year"="dashed")) +
+      theme(axis.text.x=element_text(angle=30, hjust=1),
+            axis.text.x.top = element_text(angle = 30, vjust=0, hjust=0),
+            axis.title.y=element_blank(),
+            axis.text.y=element_blank(),
+            axis.ticks.y=element_blank()
+            )
+  }
+  return(graphResult)
 }
 
 period_labelling = function(from, to){
