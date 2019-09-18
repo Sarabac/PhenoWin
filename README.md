@@ -57,3 +57,4 @@ The name of the studied zone is written on the right of the graph.
 + leaflet.extras
 + raster
 + sf
++ velox

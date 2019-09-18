@@ -33,7 +33,7 @@ ui = navbarPage(
   selected = "APP",
   windowTitle = "PhenoWin",
   title_div,
-  tags$head(# css styles
+  tags$head(
     tags$link(rel="shortcut icon", href="_Images/EMRA_Logo.ico")
   ),
   includeCSS("_Images/interface.css"),
