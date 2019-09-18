@@ -49,12 +49,12 @@ The name of the studied zone is written on the right of the graph.
 ![dashboard](_Images/graph_example.png)
 
 # R packages
-+ tidyverse
-+ scales
-+ lubridate
-+ shiny
 + leaflet
 + leaflet.extras
++ lubridate
 + raster
++ scales
 + sf
++ shiny
++ tidyverse
 + velox

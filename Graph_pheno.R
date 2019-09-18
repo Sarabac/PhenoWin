@@ -115,7 +115,7 @@ server = function(input, output, session){
       mutate(different = Lid%in%clickID) %>% 
       mutate(selected = xor(selected, different))
     # xor reverse selection if Lid detected
-    session$userData$shapes = select(shapeChanged, -different)
+    session$userData$shapes = dplyr::select(shapeChanged, -different)
     leafletProxy("map") %>%
       create_layer(filter(shapeChanged, different))
     }else{ # delete mode
@@ -169,7 +169,11 @@ server = function(input, output, session){
     #take all the selected features
     showModal(modalDialog(helpText("Loading"), footer =NULL))
     selected = session$userData$shapes %>% filter(selected)
-    if(!nrow(selected)){return(NULL)}#stop if nothing is selected
+    ss <<- selected
+    if(!nrow(selected)){
+      removeModal()
+      return(NULL)
+    }#stop if nothing is selected
     # load the velox object corresponding to the selected crop
     SCrop = input$CropSelect
     infos = readRDS(DATA_FILE(SCrop))
@@ -182,6 +186,7 @@ server = function(input, output, session){
     
   Build_Dataset = reactive({
     Pd = Extract_Dataset()
+    if(is.null(Pd)){return(NULL)}
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
       inner_join( # get the user name of the area
         select(sf::st_drop_geometry(session$userData$shapes),
@@ -194,7 +199,15 @@ server = function(input, output, session){
   observeEvent(input$compute, {
   output$DOY_GRAPH = renderPlot({
     # Draw the graph
-    dat = Build_Dataset() %>% 
+    dataset = Build_Dataset()
+    if(is.null(dataset)){ # error message
+      return(
+      ggplot() + 
+        geom_text(aes(label = lab, x=x, y=y),
+                  tibble(lab = c("No Area selected"), x=0, y=0))
+    )}
+      
+    dat = dataset %>% 
     #join with the name of the crop
       left_join(CROPS_CORRESPONDANCE_FRAME, by = "Crop") %>% 
       mutate(Crop = coalesce(Crop_name , as.character(Crop)))
@@ -219,7 +232,7 @@ server = function(input, output, session){
       Pd = Extract_Dataset() %>% 
         left_join(CROPS_CORRESPONDANCE_FRAME, by = "Crop") %>% 
         mutate(Crop = coalesce(Crop_name , as.character(Crop))) %>% 
-        select(-Crop_name)
+        dplyr::select(-Crop_name)
       if(is.null(nrow(Pd))){
         write.csv(tibble(), file, row.names = FALSE)
       }else{
