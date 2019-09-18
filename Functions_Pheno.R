@@ -53,7 +53,13 @@ extract_tif_info = function(directory){
   # the Crop number, the year and the phenological stage
   tibble(dir = list.files(directory, full.names = T)) %>%
     filter(str_detect(.$dir, ".tif$")) %>% # take all the .tif files
-    bind_cols(extract_code(.$dir))
+    mutate(name = basename(dir)) %>% 
+    mutate(
+      Crop = extract_n(name, 3),
+      Year = extract_n(name, 4),
+      # Phenology have a lenght 1 or 2
+      P = coalesce(extract_n(name, 2),extract_n(name, 1))
+    )
 }
 
 extract_date = function(dat){
@@ -81,7 +87,7 @@ extract_velox = function(infos, r, sfObj){
       gather("join", "DOY", -RN) %>%
       inner_join(infos, by="join") %>%
       inner_join(sf::st_drop_geometry(point), by="RN") %>% 
-      select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
+      dplyr::select(DOY, Area=Lid, Crop, P, Year) %>% mutate(weight = 1) %>% 
       bind_rows(PhenoDOY)
   }
   if (nrow(polyg)){
@@ -91,7 +97,7 @@ extract_velox = function(infos, r, sfObj){
     gather("join", "DOY", -RN) %>%
     inner_join(infos, by="join") %>%
     inner_join(sf::st_drop_geometry(polyg), by="RN") %>% 
-    select(DOY, Area=Lid, Crop, P, Year) %>%
+    dplyr::select(DOY, Area=Lid, Crop, P, Year) %>%
     group_by(Area, Crop, P, Year) %>%
     mutate(DOY = round(DOY), weight = 1/n()) %>% 
     group_by(Area, Crop, P, Year, DOY) %>%
@@ -139,7 +145,7 @@ cumsum_Pheno = function(weighted_pixels, digit = 2){
     expand(Date = as.Date(seq.Date(start,stop, by="day"))) %>%
     ungroup() %>%
     inner_join(Pheno_order %>%
-                 select(Area, Crop, P, P_order),
+                 dplyr::select(Area, Crop, P, P_order),
                by = c("Area", "Crop", "P_order"))
 
   sum_weight = left_join(total_period, weighted_pixels, by = c("Area", "Crop", "Date", "P")) %>%

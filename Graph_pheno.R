@@ -180,6 +180,7 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
+    daaat <<- Pd
     removeModal()
     return(Pd)
   })
@@ -189,7 +190,7 @@ server = function(input, output, session){
     if(is.null(Pd)){return(NULL)}
     sum_Pd = cumsum_Pheno(Pd, digit = 2) %>% 
       inner_join( # get the user name of the area
-        select(sf::st_drop_geometry(session$userData$shapes),
+        dplyr::select(sf::st_drop_geometry(session$userData$shapes),
                         name, IDs, Lid),
         by=c("Area"="Lid")
         )
