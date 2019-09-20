@@ -180,7 +180,6 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    daaat <<- Pd
     removeModal()
     return(Pd)
   })
