@@ -341,6 +341,6 @@ load4leaflet = function(path, name, ID_var=""){
     result = dplyr::select(polyg, IDs = !!ID_var)
   }
   return(result %>%
-           mutate(name = name, selected = FALSE) %>%
+           mutate(name = name, selected = TRUE) %>%
            mutate(Lid = paste(name, IDs, sep="_")))
   }
