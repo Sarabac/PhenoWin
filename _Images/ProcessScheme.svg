@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/PR-SVG-20010719/DTD/svg10.dtd">
-<svg width="32cm" height="34cm" viewBox="138 -82 623 663" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="32cm" height="34cm" viewBox="135 -83 627 664" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <g id="Background">
     <text font-size="12.8" style="fill: #f40000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="697.978" y="171.698">
       <tspan x="697.978" y="171.698"></tspan>
     </text>
     <g>
-      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke-dasharray: 4; stroke: #f40000" x="140" y="-80" width="300" height="120" rx="0" ry="0"/>
-      <text font-size="12.8" style="fill: #f40000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700" x="290" y="-56.1">
-        <tspan x="290" y="-56.1">Rasters containing the dates of</tspan>
-        <tspan x="290" y="-40.1">Phenological changes</tspan>
-        <tspan x="290" y="-24.1"></tspan>
-        <tspan x="290" y="-8.1"></tspan>
-        <tspan x="290" y="7.9"></tspan>
-        <tspan x="290" y="23.9"></tspan>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke-dasharray: 4; stroke: #f40000" x="140" y="-80" width="299.519" height="120" rx="0" ry="0"/>
+      <text font-size="12.8" style="fill: #f40000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700" x="289.759" y="-56.1">
+        <tspan x="289.759" y="-56.1">Rasters containing the dates of</tspan>
+        <tspan x="289.759" y="-40.1">Phenological changes</tspan>
+        <tspan x="289.759" y="-24.1"></tspan>
+        <tspan x="289.759" y="-8.1"></tspan>
+        <tspan x="289.759" y="7.9"></tspan>
+        <tspan x="289.759" y="23.9"></tspan>
       </text>
     </g>
     <g>
       <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke-dasharray: 4; stroke: #0000ff" x="140" y="60" width="300" height="39" rx="0" ry="0"/>
       <text font-size="12.8" style="fill: #0000ff; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700" x="290" y="83.4">
-        <tspan x="290" y="83.4">Function to create velox objects</tspan>
+        <tspan x="290" y="83.4">Extract_Geotif.R</tspan>
       </text>
     </g>
     <g>
@@ -43,13 +43,13 @@
     <g>
       <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #f40000" x="160" y="180" width="260" height="55" rx="0" ry="0"/>
       <text font-size="12.8" style="fill: #f40000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="290" y="203.4">
-        <tspan x="290" y="203.4">DOY_[Crop ID].tif</tspan>
+        <tspan x="290" y="203.4">DOY_[Crop ID].rds</tspan>
         <tspan x="290" y="219.4">...</tspan>
       </text>
     </g>
     <g>
-      <line style="fill: none; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x1="290" y1="40" x2="290" y2="49.1459"/>
-      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" fill-rule="evenodd" points="290,56.6459 285,46.6459 290,49.1459 295,46.6459 "/>
+      <line style="fill: none; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x1="289.759" y1="40" x2="289.869" y2="49.1467"/>
+      <polygon style="fill: #000000; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" fill-rule="evenodd" points="289.96,56.6461 284.84,46.707 289.869,49.1467 294.839,46.5867 "/>
     </g>
     <g>
       <line style="fill: none; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x1="290" y1="99" x2="289.625" y2="109.153"/>
@@ -116,7 +116,7 @@
     <g>
       <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #0000ff" x="160" y="300" width="260" height="39" rx="0" ry="0"/>
       <text font-size="12.8" style="fill: #0000ff; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="290" y="323.4">
-        <tspan x="290" y="323.4">extraction of DOY</tspan>
+        <tspan x="290" y="323.4">Extraction of DOY</tspan>
       </text>
     </g>
     <g>
@@ -159,7 +159,7 @@
     <g>
       <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x="460" y="-80" width="300" height="320" rx="0" ry="0"/>
       <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700" x="610" y="-52.1">
-        <tspan x="610" y="-52.1">LEGENDE</tspan>
+        <tspan x="610" y="-52.1">LEGEND</tspan>
         <tspan x="610" y="-36.1"></tspan>
         <tspan x="610" y="-20.1"></tspan>
         <tspan x="610" y="-4.1"></tspan>
@@ -300,8 +300,41 @@
     <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:700" x="630" y="220">
       <tspan x="630" y="220">Input</tspan>
     </text>
+    <text font-size="12.8" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="290" y="79.5">
+      <tspan x="290" y="79.5"></tspan>
+    </text>
+    <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="610" y="80">
+      <tspan x="610" y="80"></tspan>
+    </text>
     <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="290" y="79.5">
       <tspan x="290" y="79.5"></tspan>
+    </text>
+    <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="151.5" y="-64.5">
+      <tspan x="151.5" y="-64.5"></tspan>
+    </text>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x="138.632" y="-80.8284" width="31.75" height="39" rx="0" ry="0"/>
+      <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="154.507" y="-57.4284">
+        <tspan x="154.507" y="-57.4284">A</tspan>
+      </text>
+    </g>
+    <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="610" y="420">
+      <tspan x="610" y="420"></tspan>
+    </text>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x="136.591" y="258.512" width="31.8" height="39" rx="0" ry="0"/>
+      <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="152.491" y="281.912">
+        <tspan x="152.491" y="281.912">B</tspan>
+      </text>
+    </g>
+    <g>
+      <rect style="fill: #ffffff; fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; stroke: #000000" x="728.257" y="259.855" width="31.95" height="39" rx="0" ry="0"/>
+      <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="744.232" y="283.255">
+        <tspan x="744.232" y="283.255">C</tspan>
+      </text>
+    </g>
+    <text font-size="12.7998" style="fill: #000000; fill-opacity: 1; stroke: none;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="152.491" y="278.012">
+      <tspan x="152.491" y="278.012"></tspan>
     </text>
   </g>
 </svg>

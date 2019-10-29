@@ -80,8 +80,21 @@ server = function(input, output, session){
     session$userData$currentGeo["name"] = input$geofile$name
     session$userData$currentGeo["path"] = input$geofile$datapath
     #take the potential IDs for the layer. The user will choose one.
-    idvar = input$geofile$datapath %>% sf::read_sf() %>%
+    idvar = tryCatch(
+      {
+     input$geofile$datapath %>% sf::read_sf() %>%
       sf::st_drop_geometry() %>% colnames()
+     
+      },
+     
+    error = function(cond){
+      return(NA)
+    }
+    )
+    if(is.na(idvar)){
+      showModal(modalDialog("This is not a proper GeoJSON file"))
+      return(NA)
+    }
     #There is also the possibility to create IDs based on row number
     choices = setNames( c("", idvar), c("Auto Generated", idvar))
     showModal(modalDialog(
@@ -180,7 +193,6 @@ server = function(input, output, session){
     #info[[1]] about the layer (Crop, Year, Phase)
     #info[[2]] the velox objet related to info[[1]]
     Pd = extract_velox(infos[[1]], infos[[2]], selected)
-    daaat <<- Pd
     removeModal()
     return(Pd)
   })
@@ -217,7 +229,7 @@ server = function(input, output, session){
     to = input$DatesMerge[2]
     label_period = period_labelling(from,to)
     
-    graph = dat %>% #remove the data not within the time scale
+    graph <<- dat %>% #remove the data not within the time scale
       filter(Date > as.Date(from) & Date < as.Date(to)) %>%
       build_DOY_graph(date_breaks=label_period,
                       user_facet = facet_grid(name+IDs ~ Crop),
