@@ -216,7 +216,7 @@ server = function(input, output, session){
     to = input$DatesMerge[2]
     label_period = period_labelling(from,to)
     
-    graph = dat %>% #remove the data not within the time scale
+    graph <<- dat %>% #remove the data not within the time scale
       filter(Date > as.Date(from) & Date < as.Date(to)) %>%
       build_DOY_graph(date_breaks=label_period,
                       user_facet = facet_grid(name+IDs ~ Crop),
